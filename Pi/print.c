@@ -1,34 +1,27 @@
 #include "SPI.h"
 
+#define IRQ 25
+
 // Check if there is something in the Friend's FIFO from the master. 
 // Only allowed to write if we're sent data. 
-short checkFIFO() {
-	
-
+int checkFIFO() {
+	printf("Waiting for SDEP from master...\n");
+	while(!IRQ); // Wait for a SDEP to be available. 
+	printf("Received SDEP from master.\n");
+	*SPI0_CS |= 1 << 7;
+	int retVal = *SPI0_FIFO;
+	*SPI0_CS &= ~(1 << 7);
+	return retVal;
 }
 
 // Send back a "reading" from the "ADC" 
-// Currently just the old print code with sendit added. 
-void sendReading(short sendit) {
-	usleep(100000);
+void sendReading(long long sendit) {
+	printf("Writing to SPI.\n");
 	// Assert TA = 1 to turn on the SPI. CS[7]
 	*SPI0_CS |= 1 << 7;
+	usleep(100); // Prescribed 100us delay before writing to SPI. 		
 	// Send a signal by writing to FIFO. 
 	*SPI0_FIFO = sendit;  
-	// Hang; wait to see if you receive. (Check bit 16 of CS to be 1.)
-	while(!((*SPI0_CS >> 16) & 1)); 
-	// Read from FIFO and save. 
-	char save1 = *SPI0_FIFO;
-	// Send a signal by writing to FIFO. 
-	*SPI0_FIFO = sendit; 
-	// Hang; wait to see if you receive. (Check bit 16 of CS to be 1.)
-	while(!((*SPI0_CS >> 16) & 1));
-	// Read from FIFO and save.
-	char save2 = *SPI0_FIFO;
-
-	// Assemble what you read into one number (0d10 bits; fits in 2 bytes). 
-	short savefull = ((0x3 & save1) << 4) + save2;
-	printf("%#06x\n",savefull);
 	// Assert TA = 0 to turn off the SPI. CS[7]
 	*SPI0_CS &= ~(1 << 7);
 }
@@ -41,10 +34,12 @@ int main() {
 	pinMode(MISO, ALT0);
 	pinMode(MOSI, ALT0);
 	pinMode(SCLK, ALT0);	
+	pinMode(IRQ, INPUT); // We only read from IRQ (to see if a comm avail). 
 	// Set clock rate at ~1MHz: clock div=128 if at 250MHz (nearest power of 2). CLK[15:0]
 	*SPI0_CLK = 128;
 	while(1) {
-		short id = checkFIFO();
-		sendReading();
+		int id = checkFIFO();
+		printf("id: %d\n", id);
+		sendReading(0x20FFFF02FFFF);
 	}
 }
