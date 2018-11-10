@@ -6,7 +6,15 @@
 // Only allowed to write if we're sent data. 
 int checkFIFO() {
 	printf("Waiting for SDEP from master...\n");
-	while(!IRQ); // Wait for a SDEP to be available. 
+	long long count = 0;
+	while(1) {
+		printf("yo %d\n", IRQ); // TODO stop reading things like this love
+		if(IRQ) count++;
+		else if(!IRQ) count--;
+		else printf("what the hell\n");
+		printf("%d\n", count);
+	}
+	while(IRQ); // Wait for a SDEP to be available. 
 	printf("Received SDEP from master.\n");
 	*SPI0_CS |= 1 << 7;
 	int retVal = *SPI0_FIFO;

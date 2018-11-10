@@ -59,7 +59,7 @@ def main():
         uart = UART(device)
 
         # Write a string to the TX characteristic.
-        uart.write(string(0x10FFFF01FF0D0A)) # I used \r\n, although we're nowhere near Win atm, maybe no
+        uart.write(str(0x10FFFF01FF0D0A)) # I used \r\n, although we're nowhere near Win atm, maybe no
         print("Sent 'Hello world!' to the device.")
 
         # Now wait up to one minute to receive data from the device.
