@@ -11,7 +11,6 @@
 // Only allowed to write if we're sent data. 
 int checkFIFO() {
 	printf("Waiting for SDEP from master...\n");
-	long long count = 0;
 	while(!digitalRead(IRQ)); // Wait for an SDEP.
 	printf("Received SDEP from master.\n");
 	SPI0CS |= 1 << 7;
@@ -45,6 +44,6 @@ int main() {
 	while(1) {
 		int id = checkFIFO();
 		printf("id: %d\n", id);
-		sendReading(0x20FFFF02FFFF);
+		sendReading(0x20000a02ffff);
 	}
 }
