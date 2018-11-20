@@ -5,6 +5,12 @@
 #include <glib.h>
 //#include "/usr/include/glib-2.0/glib.h"
 #include <gio/gio.h>
+
+/*#ifdef G_OS_UNIX
+#include <gio/gunixfdlist.h>
+#include <unistd.h>
+#endif*/
+
 //#include <dbus/dbus.h>       // for dbus_*
 //#include <dbus/dbus-glib.h>
 
@@ -32,6 +38,7 @@ device_found_handler (GDBusConnection *connection,
                         GVariant *parameters,
                         gpointer user_data)
 {
+  printf("Handling device findness\n");
   char *device_address;
   gboolean res;
   short rssi;
@@ -81,14 +88,14 @@ get_rssi(const char *bt_address)
     return 0;
   }
 
-  dbus_conn = g_dbus_proxy_new_sync(G_BUS_TYPE_SYSTEM, NULL, &error);
+  dbus_conn = g_bus_get_sync(G_BUS_TYPE_SYSTEM, NULL, &error);
   if (error) {
     printf("Unable to get dbus connection\n");
     return 0;
   }
 
   /* Get the default BT adapter. Needed to start device discovery */
-  reply = g_dbus_proxy_call_sync(dbus_conn,
+  reply = g_dbus_connection_call_sync(dbus_conn,
 				      BLUEZ_BUS_NAME,
 				      "/",
 				      "org.bluez.Manager",
@@ -119,6 +126,7 @@ get_rssi(const char *bt_address)
 				     NULL);
 
   /* Start device discovery */
+
   reply = g_dbus_connection_call_sync(dbus_conn,
 				     BLUEZ_BUS_NAME,
 				     adapter_object,
