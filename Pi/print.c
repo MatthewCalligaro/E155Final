@@ -60,7 +60,7 @@ int main() {
 	//	printf("id: i%d\n", id);
 		SPI0CS |= 1 << 7;	
 		sendReading(0x101a01fd41542b42,0x4c45554152545458);
-		sendReading(0x100a010c03d00102,0x030405060708090a);
+		sendReading(0x100a010c3d010102,0x030405060708090a);
 	//	sendReading(0x41542b424c455541525454583d01020304050607080a);
 		checkFIFO();
 		SPI0CS &= ~(1 << 7);
