@@ -59,9 +59,10 @@ int main() {
 		//int id = checkFIFO();
 	//	printf("id: i%d\n", id);
 		SPI0CS |= 1 << 7;	
-		sendReading(0x101a01fd41542b42,0x4c45554152545458);
-		sendReading(0x100a010c3d010102,0x030405060708090a);
-	//	sendReading(0x41542b424c455541525454583d01020304050607080a);
+		sendReading(0x100a0101070a,0x0); // This is me trying a single byte write to SDEP. 
+//		sendReading(0x101a01fd41542b42,0x4c45554152545458); // This (and the next) are writing ten bytes to the TX. We think, anyway. 
+//		sendReading(0x100a010c3d010102,0x030405060708090a);
+	//	sendReading(0x41542b424c455541525454583d01020304050607080a); // What is this? 
 		checkFIFO();
 		SPI0CS &= ~(1 << 7);
 	}
