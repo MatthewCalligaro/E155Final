@@ -81,14 +81,14 @@ get_rssi(const char *bt_address)
     return 0;
   }
 
-  dbus_conn = g_bus_get_sync(G_BUS_TYPE_SYSTEM, NULL, &error);
+  dbus_conn = g_dbus_proxy_new_sync(G_BUS_TYPE_SYSTEM, NULL, &error);
   if (error) {
     printf("Unable to get dbus connection\n");
     return 0;
   }
 
   /* Get the default BT adapter. Needed to start device discovery */
-  reply = g_dbus_connection_call_sync(dbus_conn,
+  reply = g_dbus_proxy_call_sync(dbus_conn,
 				      BLUEZ_BUS_NAME,
 				      "/",
 				      "org.bluez.Manager",
