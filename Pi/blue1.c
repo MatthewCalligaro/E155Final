@@ -5,6 +5,8 @@
 #include <glib.h>
 //#include "/usr/include/glib-2.0/glib.h"
 #include <gio/gio.h>
+//#include <dbus/dbus.h>       // for dbus_*
+//#include <dbus/dbus-glib.h>
 
 #define BLUEZ_BUS_NAME "org.bluez"
 #define BLUEZ_INTF_ADAPTER "org.bluez.Adapter"
