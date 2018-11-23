@@ -5,21 +5,27 @@
 
 module testbench();    
 
-logic clk, sclk, mosi, ncs;
+logic clk, reset, dinAdc, sclkAdc, doutAdc, ncsAdc, sclkPi, doutPi, ncsPi;
 logic [7:0] led;
 
-logic miso;
-logic [4:0] counter = 0;
+logic [7:0] counter = 0;
 
-FPGA dut(clk, miso, sclk, mosi, ncs, led);
+FPGA dut(clk, reset, dinAdc, sclkAdc, doutAdc, ncsAdc, sclkPi, doutPi, ncsPi, led);
 
+// Pulse reset
+initial begin
+    reset=0; #20; reset=1; #20; reset=0;
+end
+
+// Generate clk
 always begin     
     clk=1; #5; clk=0; #5;    
 end  
 
-always_ff @(posedge sclk) begin
+always_ff @(posedge clk) begin
     counter = counter + 1'b1;
-    miso = !(counter == 7 || counter == 9 || counter == 12); 
 end
+
+assign dinAdc = counter[5];
 
 endmodule

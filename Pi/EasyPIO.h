@@ -43,7 +43,7 @@
 
 // PWM Constants
 #define PLL_FREQUENCY 500000000 // default PLLD value is 500 [MHz]
-#define CM_FREQUENCY 25000000   // max pwm clk is 25 [MHz]
+#define CM_FREQUENCY 100000000   // max pwm clk is 100 [MHz]
 #define PLL_CLOCK_DIVISOR (PLL_FREQUENCY / CM_FREQUENCY)
 
 /////////////////////////////////////////////////////////////////////
@@ -64,6 +64,7 @@
 #define ARM_TIMER_BASE 		    (BCM2835_PERI_BASE + 0xB000)
 
 #define CM_PWM_BASE             (BCM2835_PERI_BASE + 0x101000)
+#define SPI_SLAVE_BASE          (BCM2835_PERI_BASE + 0x214000)
 
 #define BLOCK_SIZE (4*1024)
 
@@ -77,6 +78,8 @@ volatile unsigned int *arm_timer; // pointer to base of arm timer registers
 
 volatile unsigned int *uart;
 volatile unsigned int *cm_pwm;
+
+volatile unsigned int *spi_slave;
 
 /////////////////////////////////////////////////////////////////////
 // GPIO Registers
@@ -606,7 +609,7 @@ typedef struct
 #define PWM_CTL (*(volatile unsigned int *) (pwm + 0))
 
 #define PWM_RNG1 (*(volatile unsigned int *) (pwm + 4))
-#define PWM_DAT1 (*(volatile unsigned int *)(pwm + 5))
+#define PWM_DAT1 (*(volatile unsigned int *) (pwm + 5))
 
 /////////////////////////////////////////////////////////////////////
 // Clock Manager Registers
@@ -654,7 +657,7 @@ void pioInit() {
 	reg_map = mmap(
 	  NULL,             //Address at which to start local mapping (null means don't-care)
       BLOCK_SIZE,       //Size of mapped memory block
-      PROT_READ|PROT_WRITE,// Enable both reading and writing to the mapped memory
+      PROT_READ|PROT_WRITE, // Enable both reading and writing to the mapped memory
       MAP_SHARED,       // This program does not have exclusive access to this memory
       mem_fd,           // Map to /dev/mem
       GPIO_BASE);       // Offset to GPIO peripheral
@@ -664,13 +667,12 @@ void pioInit() {
       close(mem_fd);
       exit(-1);
     }
-
 	gpio = (volatile unsigned *)reg_map;
 
     reg_map = mmap(
 	  NULL,             //Address at which to start local mapping (null means don't-care)
       BLOCK_SIZE,       //Size of mapped memory block
-      PROT_READ|PROT_WRITE,// Enable both reading and writing to the mapped memory
+      PROT_READ|PROT_WRITE, // Enable both reading and writing to the mapped memory
       MAP_SHARED,       // This program does not have exclusive access to this memory
       mem_fd,           // Map to /dev/mem
       SPI0_BASE);       // Offset to SPI peripheral
@@ -680,62 +682,57 @@ void pioInit() {
       close(mem_fd);
       exit(-1);
     }
-
     spi = (volatile unsigned *)reg_map;
 
     reg_map = mmap(
 	  NULL,             //Address at which to start local mapping (null means don't-care)
       BLOCK_SIZE,       //Size of mapped memory block
-      PROT_READ|PROT_WRITE,// Enable both reading and writing to the mapped memory
+      PROT_READ|PROT_WRITE, // Enable both reading and writing to the mapped memory
       MAP_SHARED,       // This program does not have exclusive access to this memory
       mem_fd,           // Map to /dev/mem
-      PWM_BASE);       // Offset to PWM peripheral
+      PWM_BASE);        // Offset to PWM peripheral
 
     if (reg_map == MAP_FAILED) {
       printf("pwm mmap error %d\n", (int)reg_map);
       close(mem_fd);
       exit(-1);
     }
-
     pwm = (volatile unsigned *)reg_map;
 
     reg_map = mmap(
 	  NULL,             //Address at which to start local mapping (null means don't-care)
       BLOCK_SIZE,       //Size of mapped memory block
-      PROT_READ|PROT_WRITE,// Enable both reading and writing to the mapped memory
+      PROT_READ|PROT_WRITE, // Enable both reading and writing to the mapped memory
       MAP_SHARED,       // This program does not have exclusive access to this memory
       mem_fd,           // Map to /dev/mem
-      SYS_TIMER_BASE);       // Offset to Timer peripheral
+      SYS_TIMER_BASE);  // Offset to Timer peripheral
 
     if (reg_map == MAP_FAILED) {
       printf("sys timer mmap error %d\n", (int)reg_map);
       close(mem_fd);
       exit(-1);
     }
-
     sys_timer = (volatile unsigned *)reg_map;
 
     reg_map = mmap(
 	  NULL,             //Address at which to start local mapping (null means don't-care)
       BLOCK_SIZE,       //Size of mapped memory block
-      PROT_READ|PROT_WRITE,// Enable both reading and writing to the mapped memory
+      PROT_READ|PROT_WRITE, // Enable both reading and writing to the mapped memory
       MAP_SHARED,       // This program does not have exclusive access to this memory
       mem_fd,           // Map to /dev/mem
-      ARM_TIMER_BASE);       // Offset to interrupts
-
+      ARM_TIMER_BASE);  // Offset to interrupts
 
     if (reg_map == MAP_FAILED) {
       printf("arm timer mmap error %d\n", (int)reg_map);
       close(mem_fd);
       exit(-1);
     }
-
     arm_timer = (volatile unsigned *)reg_map;
 
     reg_map = mmap(
 	  NULL,             //Address at which to start local mapping (null means don't-care)
       BLOCK_SIZE,       //Size of mapped memory block
-      PROT_READ|PROT_WRITE,// Enable both reading and writing to the mapped memory
+      PROT_READ|PROT_WRITE, // Enable both reading and writing to the mapped memory
       MAP_SHARED,       // This program does not have exclusive access to this memory
       mem_fd,           // Map to /dev/mem
       UART_BASE);       // Offset to UART peripheral
@@ -745,24 +742,23 @@ void pioInit() {
       close(mem_fd);
       exit(-1);
     }
-
     uart = (volatile unsigned *)reg_map;
 
     reg_map = mmap(
 	  NULL,             //Address at which to start local mapping (null means don't-care)
       BLOCK_SIZE,       //Size of mapped memory block
-      PROT_READ|PROT_WRITE,// Enable both reading and writing to the mapped memory
+      PROT_READ|PROT_WRITE, // Enable both reading and writing to the mapped memory
       MAP_SHARED,       // This program does not have exclusive access to this memory
       mem_fd,           // Map to /dev/mem
-      CM_PWM_BASE);       // Offset to ARM timer peripheral
+      CM_PWM_BASE);     // Offset to ARM timer peripheral
 
     if (reg_map == MAP_FAILED) {
       printf("cm_pwm mmap error %d\n", (int)reg_map);
       close(mem_fd);
       exit(-1);
     }
-
     cm_pwm = (volatile unsigned *)reg_map;
+
 	close(mem_fd);
 }
 
@@ -924,7 +920,8 @@ void putCharSerial(char c) {
 /////////////////////////////////////////////////////////////////////
 
 void pwmInit() {
-    pinMode(18, ALT5);
+    pinMode(40, ALT0);
+    pinMode(41, ALT0);
 
     // Configure the clock manager to generate a 25 MHz PWM clock.
     // Documentation on the clock manager is missing in the datasheet
@@ -937,11 +934,11 @@ void pwmInit() {
     CM_PWMCTL =  PWM_CLK_PASSWORD|0x20; // Turn off clock generator
     while(CM_PWMCTLbits.BUSY); // Wait for generator to stop
     CM_PWMCTL = PWM_CLK_PASSWORD|0x206; // Src = unfiltered 500 MHz CLKD
-    CM_PWMDIV = PWM_CLK_PASSWORD|(PLL_CLOCK_DIVISOR << 12); // PWM Freq = 25 MHz
+    CM_PWMDIV = PWM_CLK_PASSWORD|(PLL_CLOCK_DIVISOR << 12); // PWM Freq = 100 MHz (max)
     CM_PWMCTL = CM_PWMCTL|PWM_CLK_PASSWORD|0x10;    // Enable PWM clock
     while (!CM_PWMCTLbits.BUSY);    // Wait for generator to start    
-    PWM_CTLbits.MSEN1 = 1;  // Channel 1 in mark/space mode
-    PWM_CTLbits.PWEN1 = 1;  // Enable pwm
+    PWM_CTLbits.MSEN1 = 0;  // Use PW algorithm (not mark/space)
+    PWM_CTLbits.PWEN1 = 1;  // Enable pwm Channel 1
 }
 
 /**
