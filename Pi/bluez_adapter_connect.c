@@ -100,7 +100,8 @@ static void bluez_result_async_cb(GObject *con,
 	result = g_dbus_connection_call_finish((GDBusConnection *)con, res, &error);
 	if(error != NULL) {
 		//g_assert_error(error, G_DBUS_ERROR, G_DBUS_ERROR_UNKNOWN_METHOD);
-		g_print("Unable to get result: %s\n%d\n%d\n", error->message, error->domain, error->code);
+		g_print("Unable to get result: %s\n", error->message);
+		//g_print("Unable to get result: %s\n%d\n%d\n", error->message, error->domain, error->code);
 		return;
 	}
 
