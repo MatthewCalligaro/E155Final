@@ -201,7 +201,8 @@ static void bluez_signal_adapter_changed(GDBusConnection *conn,
 					GVariant *params,
 					void *userdata)
 {
-	g_print("Hit bluez_signal_adapter_changed %s, %s, %s, %s, %s\n", sender, path, interface, signal, params);
+	g_print("Hit bluez_signal_adapter_changed %s, %s, %s, %s, %s more text??\n", sender, path, interface, signal, g_variant_print(params, TRUE));
+	g_print("dummy text\n");
 	(void)conn;
 	(void)sender;
 	(void)path;
@@ -412,6 +413,11 @@ int main(int argc, char **argv)
 		rc = bluez_adapter_connect_device(argv);
 		if(rc)
 			goto fail;
+		// Connected, now carry on. 
+		//rc = bluez_adapter_continual_read(argv[1]);
+	}
+	else { // wrong num args what's even the point
+		goto fail;
 	}
 
 	g_main_loop_run(loop);
