@@ -73,7 +73,7 @@ static void bluez_property_value(const gchar *key, GVariant *value)
 typedef void (*method_cb_t)(GObject *, GAsyncResult *, gpointer);
 static int bluez_adapter_call_method(const char *method, GVariant *param, method_cb_t method_cb)
 {
-	g_print("Hit bluez_adapter_call_method with method %s\n", method);
+	g_print("Hit bluez_adapter_call_method with method %s, variant %s\n", method, g_variant_print(param, TRUE));
 	g_dbus_connection_call(con,
 			     "org.bluez",
 			/* TODO Find the adapter path runtime */
@@ -281,7 +281,8 @@ static int bluez_adapter_connect_device(char **argv)
 	g_variant_builder_unref(b);
 
 	rc = bluez_adapter_call_method("ConnectDevice",
-					g_variant_new_tuple(&device_dict, 1),
+					device_dict,
+					//g_variant_new_tuple(&device_dict, 1),
 					bluez_result_async_cb);
 	if(rc) {
 		g_print("Not able to call ConnectDevice\n");
