@@ -201,7 +201,7 @@ static void bluez_signal_adapter_changed(GDBusConnection *conn,
 					GVariant *params,
 					void *userdata)
 {
-	g_print("Hit bluez_signal_adapter_changed\n");
+	g_print("Hit bluez_signal_adapter_changed %s, %s, %s, %s, %s\n", sender, path, interface, signal, params);
 	(void)conn;
 	(void)sender;
 	(void)path;
@@ -222,6 +222,7 @@ static void bluez_signal_adapter_changed(GDBusConnection *conn,
 
 	g_variant_get(params, "(&sa{sv}as)", &iface, &properties, &unknown);
 	while(g_variant_iter_next(properties, "{&sv}", &key, &value)) {
+		g_print("%s\n", key); // GSERATE
 		if(!g_strcmp0(key, "Powered")) {
 			if(!g_variant_is_of_type(value, G_VARIANT_TYPE_BOOLEAN)) {
 				g_print("Invalid argument type for %s: %s != %s", key,
