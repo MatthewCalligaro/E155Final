@@ -38,6 +38,7 @@ GMainLoop *loop;
 GDBusConnection *con;
 static void bluez_property_value(const gchar *key, GVariant *value)
 {
+	g_print("Hit bluez_property_value\n");
 	const gchar *type = g_variant_get_type_string(value);
 
 	g_print("\t%s : ", key);
@@ -72,7 +73,7 @@ static void bluez_property_value(const gchar *key, GVariant *value)
 typedef void (*method_cb_t)(GObject *, GAsyncResult *, gpointer);
 static int bluez_adapter_call_method(const char *method, GVariant *param, method_cb_t method_cb)
 {
-	g_print("OOP %s\n", method);
+	g_print("Hit bluez_adapter_call_method with method %s\n", method);
 	g_dbus_connection_call(con,
 			     "org.bluez",
 			/* TODO Find the adapter path runtime */
@@ -93,6 +94,7 @@ static void bluez_result_async_cb(GObject *con,
 				  GAsyncResult *res,
 				  gpointer data)
 {
+	g_print("Hit bluez_result_async_cb\n");
 	const gchar *key = (gchar *)data;
 	GVariant *result = NULL;
 	GError *error = NULL;
@@ -120,6 +122,7 @@ static void bluez_device_appeared(GDBusConnection *sig,
 				GVariant *parameters,
 				gpointer user_data)
 {
+	g_print("Hit bluez_device_appeared\n");
 	(void)sig;
 	(void)sender_name;
 	(void)object_path;
@@ -158,6 +161,7 @@ static void bluez_device_disappeared(GDBusConnection *sig,
 				GVariant *parameters,
 				gpointer user_data)
 {
+	g_print("Hit bluez_device_disappeared\n");
 	(void)sig;
 	(void)sender_name;
 	(void)object_path;
@@ -197,6 +201,7 @@ static void bluez_signal_adapter_changed(GDBusConnection *conn,
 					GVariant *params,
 					void *userdata)
 {
+	g_print("Hit bluez_signal_adapter_changed\n");
 	(void)conn;
 	(void)sender;
 	(void)path;
@@ -243,6 +248,7 @@ done:
 
 static int bluez_adapter_set_property(const char *prop, GVariant *value)
 {
+	g_print("Hit bluez_adapter_set_property\n");
 	GVariant *result;
 	GError *error = NULL;
 
@@ -266,6 +272,7 @@ static int bluez_adapter_set_property(const char *prop, GVariant *value)
 
 static int bluez_adapter_connect_device(char **argv)
 {
+	g_print("Hit bluez_adapter_connect_device\n");
 	int rc;
 	GVariantBuilder *b = g_variant_builder_new(G_VARIANT_TYPE_VARDICT);
 	g_variant_builder_add(b, "{sv}", "Address", g_variant_new_string(argv[1]));
@@ -286,6 +293,7 @@ static int bluez_adapter_connect_device(char **argv)
 #define AGENT_PATH "/org/bluez/AutoPinAgent"
 static int bluez_agent_call_method(const gchar *method, GVariant *param)
 {
+	g_print("Hit bluez_agent_call_method with method %s\n", method);
         GVariant *result;
         GError *error = NULL;
 
@@ -311,6 +319,7 @@ static int bluez_agent_call_method(const gchar *method, GVariant *param)
 
 static int bluez_register_autopair_agent(void)
 {
+	g_print("Hit bluez_register_autopair_agent\n");
 	int rc;
 
 	rc = bluez_agent_call_method("RegisterAgent", g_variant_new("(os)", AGENT_PATH, "NoInputNoOutput"));
