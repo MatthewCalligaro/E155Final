@@ -1,40 +1,17 @@
-/* 
- * From https://gist.github.com/parthitce/eb6b751df3235f7247babc4c9aba41d8
- * bluez_adapter_connect.c - Connect with device without StartDiscovery
- * 	- This example registers an agen with NoInputOutput capability for the purpose of
- *	  auto pairing
- * 	- Use ConnectDevice method to connect with device using provided MAC address
- *	- Usual signal subscription to get the details of the connected device
- *	- Introduced new signal handler to exit the program gracefully
- *
- *	Note: As "ConnectDevice" is new API and in experimental state (but mostly stable)
- *	one need to use "-E" option when starting "bluetoothd". Systems running systemd can
- *	edit /lib/systemd/system/bluetooth.service in ExecStart option
- *
- *	When this API is useful?
- *	- When you already have the MAC address of end bluetooth Device to connect with, then
- *	  you don't need to scan for the device (with or without filter) and connect it.
- *	- StartDiscovery + Pair + Connect => ConnectDevice
- *
- *	How you will have MAC address before scanning?
- *	- When you have other communication (wired or wireless) medium to exchange the MAC address
- *	- For example, NFC OOB can be used to exchange the MAC address
- *	- Testing Bluetooth with same device (MAC address known)
- *
- *	- Here Agent capability is registered as "NoInputOutput" for experimental purpose only, in
- *	  real world scenario, Pair + Connect involves real Agents.
- *	- Also note, bluez_agent_call_method and bluez_adapter_call_method are two different methods doing
- *	  the same work with difference in interface name and object path. This exist just to make the
- * 	  understanding more clear.
- *
- * gcc `pkg-config --cflags glib-2.0 gio-2.0` -Wall -Wextra -o ./bin/bluez_adapter_connect ./bluez_adapter_connect.c `pkg-config --libs glib-2.0 gio-2.0`
+/*
+ * from https://gist.github.com/parthitce/408244ae90a13906a38f5756b0824cb7
+ * I just wanna see if any of this works at all
+ * bluez_adapter_scan.c - Scan for bluetooth devices
+ * 	- This example scans for new devices after powering the adapter, if any devices
+ * 	  appeared in /org/hciX/dev_XX_YY_ZZ_AA_BB_CC, it is monitered using "InterfaceAdded"
+ *	  signal and all the properties of the device is printed
+ *	- Scanning continues to run until any device is disappered, this happens after 180 seconds
+ *	  automatically if the device is not used.
+ * gcc `pkg-config --cflags glib-2.0 gio-2.0` -Wall -Wextra -o ./bin/bluez_adapter_scan ./bluez_adapter_scan.c `pkg-config --libs glib-2.0 gio-2.0`
  */
 #include <glib.h>
 #include <gio/gio.h>
-#include <signal.h>
-#include <string.h>
 
-GMainLoop *loop;
 GDBusConnection *con;
 static void bluez_property_value(const gchar *key, GVariant *value)
 {
@@ -67,48 +44,6 @@ static void bluez_property_value(const gchar *key, GVariant *value)
 			g_print("Other\n");
 			break;
 	}
-}
-
-typedef void (*method_cb_t)(GObject *, GAsyncResult *, gpointer);
-static int bluez_adapter_call_method(const char *method, GVariant *param, method_cb_t method_cb)
-{
-	g_print("OOP %s\n", method);
-	g_dbus_connection_call(con,
-			     "org.bluez",
-			/* TODO Find the adapter path runtime */
-			     "/org/bluez/hci0",
-			     "org.bluez.Adapter1",
-			     method,
-			     param,
-			     NULL,
-			     G_DBUS_CALL_FLAGS_NONE,
-			     -1,
-			     NULL,
-			     method_cb,
-			     (void *)method);
-	return 0;
-}
-
-static void bluez_result_async_cb(GObject *con,
-				  GAsyncResult *res,
-				  gpointer data)
-{
-	const gchar *key = (gchar *)data;
-	GVariant *result = NULL;
-	GError *error = NULL;
-
-	result = g_dbus_connection_call_finish((GDBusConnection *)con, res, &error);
-	if(error != NULL) {
-		//g_assert_error(error, G_DBUS_ERROR, G_DBUS_ERROR_UNKNOWN_METHOD);
-		g_print("Unable to get result: %s\n%d\n%d\n", error->message, error->domain, error->code);
-		return;
-	}
-
-	if(result) {
-		result = g_variant_get_child_value(result, 0);
-		bluez_property_value(key, result);
-	}
-	g_variant_unref(result);
 }
 
 static void bluez_device_appeared(GDBusConnection *sig,
@@ -209,7 +144,7 @@ static void bluez_signal_adapter_changed(GDBusConnection *conn,
 	GVariant *value = NULL;
 	const gchar *signature = g_variant_get_type_string(params);
 
-	if(strcmp(signature, "(sa{sv}as)") != 0) {
+	if(g_strcmp0(signature, "(sa{sv}as)") != 0) {
 		g_print("Invalid signature for %s: %s != %s", signal, signature, "(sa{sv}as)");
 		goto done;
 	}
@@ -240,6 +175,30 @@ done:
 		g_variant_unref(value);
 }
 
+static int bluez_adapter_call_method(const char *method)
+{
+	GVariant *result;
+	GError *error = NULL;
+
+	result = g_dbus_connection_call_sync(con,
+					     "org.bluez",
+					/* TODO Find the adapter path runtime */
+					     "/org/bluez/hci0",
+					     "org.bluez.Adapter1",
+					     method,
+					     NULL,
+					     NULL,
+					     G_DBUS_CALL_FLAGS_NONE,
+					     -1,
+					     NULL,
+					     &error);
+	if(error != NULL)
+		return 1;
+
+	g_variant_unref(result);
+	return 0;
+}
+
 static int bluez_adapter_set_property(const char *prop, GVariant *value)
 {
 	GVariant *result;
@@ -263,85 +222,13 @@ static int bluez_adapter_set_property(const char *prop, GVariant *value)
 	return 0;
 }
 
-static int bluez_adapter_connect_device(char **argv)
+int main(void)
 {
-	int rc;
-	GVariantBuilder *b = g_variant_builder_new(G_VARIANT_TYPE_VARDICT);
-	g_variant_builder_add(b, "{sv}", "Address", g_variant_new_string(argv[1]));
-	GVariant *device_dict = g_variant_builder_end(b);
-	g_variant_builder_unref(b);
-
-	rc = bluez_adapter_call_method("ConnectDevice",
-					g_variant_new_tuple(&device_dict, 1),
-					bluez_result_async_cb);
-	if(rc) {
-		g_print("Not able to call ConnectDevice\n");
-		return 1;
-	}
-
-	return 0;
-}
-
-#define AGENT_PATH "/org/bluez/AutoPinAgent"
-static int bluez_agent_call_method(const gchar *method, GVariant *param)
-{
-        GVariant *result;
-        GError *error = NULL;
-
-        result = g_dbus_connection_call_sync(con,
-                                             "org.bluez",
-                                             "/org/bluez",
-                                             "org.bluez.AgentManager1",
-                                             method,
-                                             param,
-                                             NULL,
-                                             G_DBUS_CALL_FLAGS_NONE,
-                                             -1,
-                                             NULL,
-                                             &error);
-        if(error != NULL) {
-		g_print("Register %s: %s\n", AGENT_PATH, error->message);
-                return 1;
-	}
-
-        g_variant_unref(result);
-        return 0;
-}
-
-static int bluez_register_autopair_agent(void)
-{
-	int rc;
-
-	rc = bluez_agent_call_method("RegisterAgent", g_variant_new("(os)", AGENT_PATH, "NoInputNoOutput"));
-	if(rc)
-		return 1;
-
-	rc = bluez_agent_call_method("RequestDefaultAgent", g_variant_new("(o)", AGENT_PATH));
-	if(rc) {
-		bluez_agent_call_method("UnregisterAgent", g_variant_new("(o)", AGENT_PATH));
-		return 1;
-	}
-
-	return 0;
-}
-
-static void cleanup_handler(int signo)
-{
-	if (signo == SIGINT) {
-		g_print("received SIGINT\n");
-		g_main_loop_quit(loop);
-	}
-}
-
-int main(int argc, char **argv)
-{
+	GMainLoop *loop;
 	int rc;
 	guint prop_changed;
 	guint iface_added;
 	guint iface_removed;
-
-	if(signal(SIGINT, cleanup_handler) == SIG_ERR)
-		g_print("can't catch SIGINT\n");
 
 	con = g_bus_get_sync(G_BUS_TYPE_SYSTEM, NULL, NULL);
 	if(con == NULL) {
@@ -390,19 +277,17 @@ int main(int argc, char **argv)
 		goto fail;
 	}
 
-	rc = bluez_register_autopair_agent();
+	rc = bluez_adapter_call_method("StartDiscovery");
 	if(rc) {
-		g_print("Not able to register default autopair agent\n");
+		g_print("Not able to scan for new devices\n");
 		goto fail;
 	}
 
-	if(argc == 2) {
-		rc = bluez_adapter_connect_device(argv);
-		if(rc)
-			goto fail;
-	}
-
 	g_main_loop_run(loop);
+	rc = bluez_adapter_call_method("StopDiscovery");
+	if(rc)
+		g_print("Not able to stop scanning\n");
+	g_usleep(100);
 
 	rc = bluez_adapter_set_property("Powered", g_variant_new("b", FALSE));
 	if(rc)
