@@ -95,45 +95,6 @@ void spi0Init() {
 	spi0 = (volatile unsigned *)reg_map;
 }
 
-// assign a pin to a mode based on its function
-void pinMode(int pin, int function)
-{
-	unsigned index, shift;
-	
-	// make sure the range of the pin to is [0, 53]
-	if (pin > 53 || pin < 0) {
-	      printf("Pin out of range, must be 0-53 \n");
-	      exit(-1);
-	 }
 
-	// find the position of the gpio pin
-	index = pin / 10; 
-	shift = (pin % 10) * 3;
 
-	// put function to the found positions
-	gpio[index] &= ~(((~function) & 7) << shift);
-	gpio[index] |= function << shift;	
-}
-
-// write HIGH or LOW to the specified pin
-void digitalWrite(int pin, int val)
-{
-	unsigned set, clr;
-
-	// make sure range of the pin to is [0, 53]
-	if (pin > 53 || pin < 0) {
-	      printf("Pin out of range, must be 0-53 \n");
-	      exit(-1);
-	 }
-
-	// find the correct bits to write
-	set = pin < 32 ? 7 : 8;
-	clr = pin < 32 ? 10: 11;
-
-	// set pin based on val
-	if (val)
-		gpio[set] = (0x1) << (pin % 32);
-	else
-		gpio[clr] = (0x1) << (pin % 32);
-}
 #endif
