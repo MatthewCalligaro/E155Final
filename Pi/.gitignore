@@ -4,3 +4,8 @@
 !*.py
 !Makefile
 !.gitignore
+!bluetoothctl/
+!bluetoothctl/*
+
+
+**/.DS_Store
