@@ -7,10 +7,10 @@
 module mem(input logic clk,
            input logic WE,
            input logic [12:0] A,
-           input logic [9:0] WD,
-           output logic [9:0] RD);
+           input logic [10:0] WD,
+           output logic [10:0] RD);
 	
-	logic [9:0] RAM[8191:0];    // Maximum allowable RAM = 2^13
+	logic [10:0] RAM[8191:0];    // Maximum allowable RAM = 2^13
 	assign RD = RAM[A]; 
 	
 	always_ff@(posedge clk)

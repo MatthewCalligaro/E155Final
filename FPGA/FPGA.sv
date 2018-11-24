@@ -3,6 +3,9 @@
 // Date: 11/7/2018
 // Summary: 
 
+// NOTE: can achieve a "repeater effect" by inverting sendVoltage
+// not sure how to do it at anything but max volume though
+
 module FPGA(input logic clk, reset,
             input logic dinAdc,
             input logic [3:0] switch,
@@ -10,80 +13,109 @@ module FPGA(input logic clk, reset,
             output logic sclkPi, doutPi, ncsPi,
             output logic [7:0] led);
     
+    // Clock and SPI
     logic [7:0] sclkGen;    // counter to generate sclks
-    logic [9:0] counter;    // counter to sample at 48 KHz
+    logic [9:0] counter;   // counter to sample at 48 KHz
     logic spiStart;         // raises when SPI modules should start the next cycle
 
-    logic [6:0] flangerOffset;  // flanger offset
-    logic [4:0] flangerCounter; // counter for when to change flanger offset
-    logic flangerDown;          // flanger direction
+    // Calibration
+    logic calibrate;                    // indicates that we are in calibration mode
+    logic [31:0] offsetSum;             // used to calculate the average voltage during calibration period
+    logic [12:0] calibrationSamples;    // the number of samples taken so far during the calibration period
+    logic [9:0] offset;                 // voltage bias produced by amplifier
 
+    // RAM
     logic [12:0] address;   // address to read or write to RAM
     logic [12:0] writeAdr;  // current address we are writing to
-    logic WE;
+    logic increaseAdr;      // indicates whether we should increase writeAdr this sample
+    logic WE;               // write enable for RAM
 
-    logic [9:0] readVoltage;    // voltage read from RAM
-    logic [9:0] sampleVoltage;  // shift register to read voltage from ADC
-    logic [15:0] sumVoltage;    // voltage calculated as effects are applied
-    logic [9:0] sendVoltage;    // voltage to send to Pi
+    // Voltages
+    logic [9:0] sampleVoltage;      // shift register to read voltage from ADC
+    logic [10:0] readVoltage;       // voltage read from RAM (sign-magnitude)
+    logic [10:0] writeVoltage;      // voltage sampled during last cycle to store in RAM (sign-magnitude)
+    logic [15:0] sumVoltage;        // voltage calculated as effects are applied (2's complement)
+    logic [9:0] sendVoltageMag;     // magnitude of voltage to send to pi
+    logic sendVoltageSign;          // sign of voltage to send to pi
 
     adc adc1(sclkAdc, reset, spiStart, 1'b0, dinAdc, doutAdc, ncsAdc, sampleVoltage);
-    pi pi1(sclkPi, reset, spiStart, sendVoltage, doutPi, ncsPi);
-    mem mem1(clk, WE, address, sampleVoltage, readVoltage);
+    pi pi1(sclkPi, reset, spiStart, {sendVoltageSign, sendVoltageMag}, doutPi, ncsPi);
+    mem mem1(clk, WE, address, writeVoltage, readVoltage);
 
     always_ff @(posedge clk, posedge reset) begin
         if (reset) begin
             sclkGen <= 0;
             counter <= 0;
             writeAdr <= 0;
-            sendVoltage <= 0;
-        end else begin
+            increaseAdr <= 0;
+            calibrate <= 1'b1;
+            offsetSum <= 0;
+            calibrationSamples <= 0;
+        end else if (calibrate) begin
+            if (counter == 0) begin
+                // add the next calibration sample to the sum
+                offsetSum <= offsetSum + sampleVoltage;
+                calibrationSamples <= calibrationSamples + 1'b1;
+                led <= calibrationSamples[12:5];
+
+                // once we have collected 4096 samples, calculate the offset and end calibration
+                if (calibrationSamples == 13'h1000) begin
+                    offset <= offsetSum[21:12];
+                    calibrate <= 1'b0;
+                end
+            end 
+        end
+        else begin
             case (counter)
-                10'h0: begin        // start with sampled voltage
-                    sumVoltage <= readVoltage;
-                    writeAdr <= writeAdr + 1'b1;
+                10'h0: begin        // start with previous sampled voltage
+                    writeVoltage <= (sampleVoltage < offset) ? {1'b1, offset - sampleVoltage} : {1'b0, sampleVoltage - offset};
+                    sumVoltage <= sampleVoltage;
+                    writeAdr <= writeAdr + increaseAdr;
+                    increaseAdr <= !increaseAdr;
+                end
+                10'h1: begin        // factor in offset
+                    sumVoltage <= sumVoltage - offset;
                     address <= writeAdr + 1'b1;
                 end
-                10'h1: begin        // add digital delay
-                    if (switch[1])  sumVoltage <= sumVoltage + readVoltage;
-                    address <= writeAdr - 13'd512;
+                10'h2: begin        // add digital delay
+                    if (switch[1])  sumVoltage <= readVoltage[10] ? (sumVoltage - readVoltage[9:0]) : (sumVoltage + readVoltage[9:0]);
+                    address <= writeAdr - 13'h80;
                 end 
-                10'h2: begin        // add chorus 1
-                    if (switch[2])  sumVoltage <= sumVoltage + (readVoltage >> 1);
-                    address <= writeAdr - 13'd1024;
+                10'h3: begin        // add chorus 1
+                    if (switch[2])  sumVoltage <= readVoltage[10] ? (sumVoltage - readVoltage[9:0]) : (sumVoltage + readVoltage[9:0]);
+                    address <= writeAdr - 13'hC0;
                 end
-                10'h3: begin        // add chorus 2
-                    if (switch[2])  sumVoltage <= sumVoltage + (readVoltage >> 1);
-                    address <= writeAdr - 13'd2048;
+                10'h4: begin        // add chorus 2
+                    if (switch[2])  sumVoltage <= readVoltage[10] ? (sumVoltage - readVoltage[9:0]) : (sumVoltage + readVoltage[9:0]);
+                    address <= writeAdr - 13'h100;
                 end
-                10'h4: begin        // add chorus 3
-                    if (switch[2])  sumVoltage <= sumVoltage + (readVoltage >> 1);
-                    address <= writeAdr - flangerOffset;
+                10'h5: begin        // add chorus 3
+                    if (switch[2])  sumVoltage <= readVoltage[10] ? (sumVoltage - readVoltage[9:0]) : (sumVoltage + readVoltage[9:0]);
                 end
-                10'h5: begin        // add flanger
-                    if (switch[3])  sumVoltage <= sumVoltage + readVoltage;
-                    address <= writeAdr;
+                10'h6: begin        // calculate sendVoltageSign
+                    sendVoltageSign <= sumVoltage[15];
+                    sumVoltage <= sumVoltage[15] ? -sumVoltage : sumVoltage; 
                 end
-                10'h6: begin        // calculate sendVoltage with saturation
-                    if (switch[0])  sendVoltage <= ((sumVoltage << 1) > 10'h3F) ? 10'h3F : {sumVoltage[8:0], 1'b0};
-                    else            sendVoltage <= (sumVoltage > 10'h3FF) ? 10'h3FF : sumVoltage[9:0];
-                    led <= (sendVoltage > 10'h3FF) ? 8'hFF : sumVoltage[9:2];
+                10'h7: begin        // add overdrive to sendVoltageMag with saturation
+                    // add overdrive
+                    if (switch[0])  sendVoltageMag <= (sumVoltage > 16'h7F) ? 10'hFF : {sumVoltage[8:0], 1'b0};                   
+                    else            sendVoltageMag <= (sumVoltage > 16'h3FF) ? 10'h3FF : sumVoltage[9:0];
+                end
+                10'h8: begin        // add solo effect by inverting sendVoltageMag
+                    if (switch[3])  sendVoltageMag <= (sendVoltageMag > 4'hC) ? (-sendVoltageMag) >>> 1 : 1'b0;
+                end 
+                10'h9: begin        // update LEDs
+                    led <= sendVoltageMag[9:2];
                 end
             endcase
-
-            // When flangerCounter == 0, increment or decrement flangerOffset
-            // When flangerOffset maxes out, change flanger direction
-            flangerCounter <= flangerCounter + 1'b1;
-            if (flangerCounter == 1'b0) flangerOffset <= flangerOffset + (flangerDown ? 7'h7F : 1'b1);
-            flangerDown <= (flangerOffset == 7'h7F) ? !flangerDown : flangerDown;
 
             sclkGen <= (counter == 10'd832) ? 1'b0 : sclkGen + 1'b1; 
             counter <= (counter == 10'd832) ? 1'b0 : counter + 1'b1;
         end
     end
 
-    assign spiStart = counter < 10'd416;    // Raises when counter == 0
-    assign WE = counter == 10'd832;         // Write sampleVoltage on last clk of each cycle
-    assign sclkAdc = sclkGen[3];            // ADC sclk = 2.5 MHz (16 clks)
-    assign sclkPi = sclkGen[5];             // Pi sclk  = 625 KHz (64 clks)
+    assign spiStart = counter < 10'd416;    // raises when counter == 0
+    assign WE = counter == 10'd832;         // store writeVoltage on last clk of each cycle
+    assign sclkAdc = sclkGen[3];            // ADC's sclk = 2.5 MHz (16 clks)
+    assign sclkPi = sclkGen[5];             // Pi's sclk  = 625 KHz (64 clks)
 endmodule

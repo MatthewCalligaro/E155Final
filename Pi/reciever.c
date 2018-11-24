@@ -18,9 +18,9 @@
 
 // Program constants
 #define RATE 20             // 48KHz ~= 20 microseconds
-#define VOLUME 32           // Volume multiplier
+#define VOLUME 16           // Volume multiplier
 #define BUF_SIZE (1 << 21)  // Size of recording buffer
-#define ADC_BITS 10         // Bit Depth of ADC
+#define ADC_BITS 11         // Bit Depth of ADC
 #define FLASH_SPEED 200     // LED flash rate in miliseconds
 #define DEBOUNCE_TIME 5     // Time to wait for inputs to debounce in miliseconds
 
@@ -241,9 +241,10 @@ int main()
         digitalWrite(PIN_LED, running);
 
         // Calculate next dut
+        // TODO: If you make dut negative, you get solo-level distortion 
         if (!recording && running)
         {
-            dut = (input + buffer[playIndex]) / (65535.0);
+            dut = ((float)input + buffer[playIndex]) / (1 << 15);
             playIndex++;
 
             if (playIndex >= recordIndex)
@@ -254,8 +255,9 @@ int main()
         }
         else
         {
-            dut = input / (65535.0);
+            dut = ((float)input) / (1 << 15);
         }
+        dut = (dut / 2) + 0.5;    // Scale dut so that it is positive
 
         // Reset SPI variables
         bitsIn = 0;
@@ -277,17 +279,31 @@ int main()
 
                     if (curNCS || bitsIn >= ADC_BITS)
                     {
+                        // Convert 11-bit sign-magnitude to 16-bit 2's complement
+                        if ((input >> 10) & 0x1)
+                        {
+                            input = -(input & 0x3FF);
+                        }
                         input *= VOLUME;
+
+                        // Don't use the sample if the SPI transfer failed 
                         if (curNCS)
                         {
                             failures++;
                             input = lastInput;
                         }
 
+                        // If set to record, add to recording buffer 
                         if (recording && running)
                         {
                             buffer[recordIndex] = input;
                             recordIndex++;
+
+                            if (recordIndex >= BUF_SIZE)
+                            {
+                                running = 0;
+                                recordIndex = 0;
+                            }
                         }
                         break;
                     }

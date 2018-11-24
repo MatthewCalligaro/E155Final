@@ -27,5 +27,7 @@ module adc(input logic sclk, reset, start,
 
     // Read data on the positive edge of the clock 
     always_ff @(posedge sclk)
-        if (counter >= 4'h5 && counter < 4'hF)  voltage <= {voltage[8:0], miso};
+        if (counter >= 4'h5 && counter < 4'hF) begin
+            voltage <= {voltage[8:0], miso};
+        end
 endmodule
