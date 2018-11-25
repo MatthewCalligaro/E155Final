@@ -1,7 +1,7 @@
 // Name: Matthew Calligaro
 // Email: mcalligaro@g.hmc.edu
 // Date: 11/7/2018
-// Summary: 
+// Summary: SPI master to extract sampled voltages from ADC
 
 module adc(input logic sclk, reset, start,
            input logic channel, 
@@ -18,7 +18,6 @@ module adc(input logic sclk, reset, start,
         else begin
             // Reset counter on start, otherwise count up to 15 and stop
             counter = (start && !lastStart) ? 4'b0 : (counter == 4'hF) ? 4'hF : counter + 4'b1;
-            
             ncs = counter == 4'hF;                      // Hold ncs low for first 15 cycles
             mosi = channel ? 1'b1 : counter != 4'h2;    // ODD/SIGN = channel, all others are 1
             lastStart = start;
@@ -27,7 +26,5 @@ module adc(input logic sclk, reset, start,
 
     // Read data on the positive edge of the clock 
     always_ff @(posedge sclk)
-        if (counter >= 4'h5 && counter < 4'hF) begin
-            voltage <= {voltage[8:0], miso};
-        end
+        if (counter >= 4'h5 && counter < 4'hF) voltage <= {voltage[8:0], miso};
 endmodule

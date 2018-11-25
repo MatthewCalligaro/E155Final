@@ -1,7 +1,7 @@
 // Name: Matthew Calligaro
 // Email: mcalligaro@g.hmc.edu
 // Date: 11/13/2018
-// Summary:
+// Summary: SPI master to send voltages to the Raspberry Pi
 
 module pi(input logic sclk, reset, start,
           input logic [10:0] voltage,

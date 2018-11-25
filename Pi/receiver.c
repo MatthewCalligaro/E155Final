@@ -1,38 +1,32 @@
 // Name: Matthew Calligaro
 // Email: mcalligaro@g.hmc.edu
 // Date: 11/10/2018
-// Summary:
+// Summary: Plays and records the digital signal sent by the FPGA 
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <sys/time.h>
 #include "EasyPIO.h"
 
 ////////////////////////////////
-//  Constants
+//  Constants and Globals
 ////////////////////////////////
 
-// Resistors:
-// LED: 220 ohms
-// Switches: 10 kohms
-
 // Program constants
-#define RATE 20             // 48KHz ~= 20 microseconds
-#define VOLUME 16           // Volume multiplier
-#define BUF_SIZE (1 << 21)  // Size of recording buffer
-#define ADC_BITS 11         // Bit Depth of ADC
-#define FLASH_SPEED 200     // LED flash rate in miliseconds
-#define DEBOUNCE_TIME 5     // Time to wait for inputs to debounce in miliseconds
+#define VOLUME 16           // volume multiplier
+#define BUF_SIZE (1 << 24)  // size of recording buffer
+#define INPUT_BITS 11       // bit depth of FPGA signal
+#define FLASH_TIME 200      // LED flash time in miliseconds
+#define DEBOUNCE_TIME 5     // time in miliseconds to wait for inputs to debounce
 
 // Pins
-#define PIN_RECORD 18   // Switch to determine record or play mode
-#define PIN_START 24    // Pushbutton to start/stop play/record
-#define PIN_RESET 25    // Pushbutton to reset play/record
-#define PIN_SAVE 12     // Pushbutton to save recording
-#define PIN_LED 21      // LED to indicate playing or recording 
-#define NCS 17
-#define MOSI 22
-#define SCLK 5
+#define PIN_RECORD 18       // switch to determine play or record mode
+#define PIN_START 24        // pushbutton to start/stop play or record
+#define PIN_RESET 25        // pushbutton to reset play or record
+#define PIN_SAVE 12         // pushbutton to save recording
+#define PIN_LED 21          // LED to indicate when playing or recording 
+#define NCS 17              // SPI chip select
+#define MOSI 22             // SPI master out slave in 
+#define SCLK 5              // SPI clock
 
 // WAV constants
 #define CHANNELS 1
@@ -40,6 +34,10 @@
 #define BIT_DEPTH 16
 #define BIT_RATE (SAMPLE_RATE * BIT_DEPTH * CHANNELS / 8)
 #define BYTES_PER_SAMPLE (BIT_DEPTH * CHANNELS / 8)
+
+// Global Variables 
+short buffer[BUF_SIZE];     // stores samples of the recording
+                            // (must be a global variable to prevent segfault due to size)
 
 ////////////////////////////////
 //  Structs
@@ -62,10 +60,15 @@ typedef struct
     int dataLength;
 } WavHeader;
 
+
+
 ////////////////////////////////
 //  Functions
 ////////////////////////////////
 
+/**
+ * \brief Initialize peripherals
+ */
 void init()
 {
     pioInit();
@@ -82,7 +85,12 @@ void init()
     pinMode(SCLK, INPUT);
 }
 
-// TODO: Resolve if it is a unsigned or signed short?
+/**
+ * \brief Save recorded audio to a .wav file on the website
+ *
+ * \param buffer        recorded audio samples
+ * \param bufferSize    numebr of audio samples in buffer
+ */
 void saveRecording(short* buffer, size_t bufferSize)
 {
     WavHeader header;
@@ -118,13 +126,18 @@ void saveRecording(short* buffer, size_t bufferSize)
     fclose(file);
 }
 
+/**
+ * \brief Load .wav from website into buffer
+ *
+ * \param buffer        array with which to load audio samples
+ */
 size_t loadRecording(short* buffer)
 {
     size_t samples = 0;
     FILE* file = fopen("/var/www/html/recording.wav", "r");
     if (file != NULL)
     {
-        fread(buffer, 1, 44, file); // Read in the heading but overwrite it
+        fread(buffer, 1, 44, file); // Read in the header but overwrite it
         samples = fread(buffer, sizeof(short), BUF_SIZE, file);
         fclose(file);
     }
@@ -132,26 +145,28 @@ size_t loadRecording(short* buffer)
     return samples;
 }
 
+/**
+ * \brief Flash the LED a given number of times
+ *
+ * \param numFlashes        number of times to flash LED
+ */
 void flashLED(int numFlashes)
 {
     for (int i = 0; i < numFlashes; ++i)
     {
         digitalWrite(PIN_LED, 1);
-        usleep(FLASH_SPEED * 1000);
+        usleep(FLASH_TIME * 1000);
         digitalWrite(PIN_LED, 0);
-        usleep(FLASH_SPEED * 1000);
+        usleep(FLASH_TIME * 1000);
     }
 }
 
+/**
+ * \brief Entry point for program
+ */
 int main()
 {
     init();
-
-    // Time variables
-    struct timeval tv;
-    gettimeofday(&tv, NULL);
-    long long unsigned int curTime = tv.tv_sec * 1000000 + tv.tv_usec;
-    long long unsigned int finishTime = curTime + RATE;
 
     // GPIO variables
     int recording = digitalRead(PIN_RECORD);
@@ -169,7 +184,6 @@ int main()
     float dut;
 
     // Recording variables
-    short buffer[BUF_SIZE];
     size_t recordIndex = loadRecording(buffer);
     size_t playIndex = 0;
 
@@ -178,20 +192,23 @@ int main()
     int lastNCS = curNCS;
     int curSCLK;
     int lastSCLK;
-    int inCycle;
+    int reading;
     short input;
     short lastInput;
     int bitsIn;
 
-    // Debugging variables 
-    int failures = 0;
-
     printf("starting...\n");
+
+    // One iteration of this loop corresponds to one sample from the FPGA 
     while (1)
     {
-        // Handle GPIO
+        ////////////////////////////////
+        //  Handle GPIO
+        ////////////////////////////////
+
+        // Allow inputs to debounce before reading
         inputSamples++;
-        if (inputSamples / (SAMPLE_RATE / 1000) > DEBOUNCE_TIME)    // This approach is not gaurenteed to work
+        if (inputSamples / (SAMPLE_RATE / 1000) > DEBOUNCE_TIME)
         {
             recording = digitalRead(PIN_RECORD);
             start = digitalRead(PIN_START);
@@ -200,16 +217,19 @@ int main()
             inputSamples = 0;
         }
 
+        // if switch between play and recording mode, stop playing/recording 
         if (recording != lastRecording)
         {
             running = 0;
         }
 
+        // Handle "start" button
         if (start && !lastStart)
         {
             running = !running;
         }   
 
+        // Handle "reset" button
         if (reset && !lastReset)
         {
             if (recording)
@@ -221,10 +241,10 @@ int main()
                 playIndex = 0;
             }
             running = 0;
-            printf("failures: %d\n", failures);
             flashLED(1);
         }
 
+        // Handle "save" button
         if (save && !lastSave)
         {
             printf("saving...\n");
@@ -234,19 +254,28 @@ int main()
             running = 0;
         }
 
+        // Update last_ variables so we only trigger on the raising edge of inputs
         lastRecording = recording;
         lastStart = start;
         lastReset = reset; 
         lastSave = save;
+
+        // Turn LED on if playing or recording
         digitalWrite(PIN_LED, running);
 
-        // Calculate next dut
-        // TODO: If you make dut negative, you get solo-level distortion 
+
+
+        ////////////////////////////////
+        //  Calculate next dut
+        ////////////////////////////////
+
+        // If in play mode, combine the input with the recording
         if (!recording && running)
         {
             dut = ((float)input + buffer[playIndex]) / (1 << 15);
             playIndex++;
 
+            // If we run out of recording, stop playing
             if (playIndex >= recordIndex)
             {
                 running = 0;
@@ -257,27 +286,40 @@ int main()
         {
             dut = ((float)input) / (1 << 15);
         }
-        dut = (dut / 2) + 0.5;    // Scale dut so that it is positive
+
+        // Scale dut so that it is positive
+        dut = (dut / 2) + 0.5;    
+
+
+
+        ////////////////////////////////
+        //  Handle SPI
+        ////////////////////////////////
 
         // Reset SPI variables
         bitsIn = 0;
         lastInput = input;
         input = 0;
-        inCycle = 0;
+        reading = 0;
 
         // Read from SPI
         while (1)
         {
-            curNCS = digitalRead(NCS); // perhaps move this to the two places we need it
-            if (inCycle)
+            curNCS = digitalRead(NCS);
+
+            // NCS is low and we are reading
+            if (reading)
             {
                 curSCLK = digitalRead(SCLK);
+
+                // Read one bit on the positive edge of SCLK
                 if (!lastSCLK && curSCLK)
                 {
                     input = (input << 1) + digitalRead(MOSI); 
                     bitsIn++;
-
-                    if (curNCS || bitsIn >= ADC_BITS)
+                    
+                    // Stop reading once we NCS is raised or we read all bits
+                    if (curNCS || bitsIn >= INPUT_BITS)
                     {
                         // Convert 11-bit sign-magnitude to 16-bit 2's complement
                         if ((input >> 10) & 0x1)
@@ -289,7 +331,6 @@ int main()
                         // Don't use the sample if the SPI transfer failed 
                         if (curNCS)
                         {
-                            failures++;
                             input = lastInput;
                         }
 
@@ -310,10 +351,13 @@ int main()
                 } 
                 lastSCLK = curSCLK;
             }
+
+            // We are waiting for NCS to go low
             else if (lastNCS && !curNCS)
             {
+                // Set output volume with PWM
                 setPWM(SAMPLE_RATE / 2, dut);
-                inCycle = 1;
+                reading = 1;
                 curSCLK = digitalRead(SCLK);
                 lastSCLK = curSCLK;   
             }
@@ -321,28 +365,3 @@ int main()
         }
     }
 }
-
-/*
-while (1)
-{
-    setPWM(SAMPLE_RATE, dut);
-
-    recordIndex++;
-    dut = buffer[recordIndex] / 65535.0 * VOLUME;
-    // dut = ((counter >> 6) % 2) * VOLUME / 4;
-    counter++;
-
-    if (counter % 48000 == 0)
-    {
-        printf("sec: %d\n", counter / 48000);
-    }
-
-    // Wait until the end of this cycle
-    while (curTime < finishTime)
-    {
-        gettimeofday(&tv, NULL);
-        curTime = tv.tv_sec * 1000000 + tv.tv_usec;
-    }
-    finishTime += RATE;
-}
-*/

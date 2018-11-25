@@ -1,10 +1,7 @@
 // Name: Matthew Calligaro
 // Email: mcalligaro@g.hmc.edu
 // Date: 11/7/2018
-// Summary: 
-
-// NOTE: can achieve a "repeater effect" by inverting sendVoltage
-// not sure how to do it at anything but max volume though
+// Summary: Top-level module for FPGA multi-effects 
 
 module FPGA(input logic clk, reset,
             input logic dinAdc,
@@ -15,7 +12,7 @@ module FPGA(input logic clk, reset,
     
     // Clock and SPI
     logic [7:0] sclkGen;    // counter to generate sclks
-    logic [9:0] counter;   // counter to sample at 48 KHz
+    logic [9:0] counter;    // counter to sample at 48 KHz
     logic spiStart;         // raises when SPI modules should start the next cycle
 
     // Calibration
@@ -25,24 +22,27 @@ module FPGA(input logic clk, reset,
     logic [9:0] offset;                 // voltage bias produced by amplifier
 
     // RAM
-    logic [12:0] address;   // address to read or write to RAM
+    logic [12:0] address;   // address at which we read or write to RAM
     logic [12:0] writeAdr;  // current address we are writing to
-    logic increaseAdr;      // indicates whether we should increase writeAdr this sample
+    logic increaseAdr;      // indicates whether we should increase writeAdr this cycle
     logic WE;               // write enable for RAM
 
     // Voltages
-    logic [9:0] sampleVoltage;      // shift register to read voltage from ADC
+    logic [9:0] sampleVoltage;      // shift register to read voltage from ADC (unsigned)
     logic [10:0] readVoltage;       // voltage read from RAM (sign-magnitude)
     logic [10:0] writeVoltage;      // voltage sampled during last cycle to store in RAM (sign-magnitude)
     logic [15:0] sumVoltage;        // voltage calculated as effects are applied (2's complement)
     logic [9:0] sendVoltageMag;     // magnitude of voltage to send to pi
     logic sendVoltageSign;          // sign of voltage to send to pi
 
+    // Modules
     adc adc1(sclkAdc, reset, spiStart, 1'b0, dinAdc, doutAdc, ncsAdc, sampleVoltage);
     pi pi1(sclkPi, reset, spiStart, {sendVoltageSign, sendVoltageMag}, doutPi, ncsPi);
     mem mem1(clk, WE, address, writeVoltage, readVoltage);
 
+    // Registers
     always_ff @(posedge clk, posedge reset) begin
+        // on reset, reset relevant registers and enter calibration mode
         if (reset) begin
             sclkGen <= 0;
             counter <= 0;
@@ -51,7 +51,10 @@ module FPGA(input logic clk, reset,
             calibrate <= 1'b1;
             offsetSum <= 0;
             calibrationSamples <= 0;
-        end else if (calibrate) begin
+        end 
+        
+        // in calibration mode, calculate average voltage bias produced by amplifier 
+        else if (calibrate) begin
             if (counter == 0) begin
                 // add the next calibration sample to the sum
                 offsetSum <= offsetSum + sampleVoltage;
@@ -65,50 +68,59 @@ module FPGA(input logic clk, reset,
                 end
             end 
         end
+
+        // otherwise, sample, apply effects, and send to the Pi
         else begin
             case (counter)
                 10'h0: begin        // start with previous sampled voltage
-                    writeVoltage <= (sampleVoltage < offset) ? {1'b1, offset - sampleVoltage} : {1'b0, sampleVoltage - offset};
                     sumVoltage <= sampleVoltage;
                     writeAdr <= writeAdr + increaseAdr;
                     increaseAdr <= !increaseAdr;
                 end
                 10'h1: begin        // factor in offset
                     sumVoltage <= sumVoltage - offset;
+                    writeVoltage <= (sampleVoltage < offset) ? {1'b1, offset - sampleVoltage} : {1'b0, sampleVoltage - offset};
+                end
+                10'h2: begin        // reduce noise with a gate
+                    if (writeVoltage[9:0] < 8'h7) begin
+                        writeVoltage <= 1'b0;
+                        sumVoltage <= 1'b0;
+                    end 
                     address <= writeAdr + 1'b1;
                 end
-                10'h2: begin        // add digital delay
-                    if (switch[1])  sumVoltage <= readVoltage[10] ? (sumVoltage - readVoltage[9:0]) : (sumVoltage + readVoltage[9:0]);
-                    address <= writeAdr - 13'h80;
+                10'h3: begin        // add digital delay
+                    if (switch[1])  sumVoltage <= (readVoltage[10] ? (sumVoltage - readVoltage[9:0]) : (sumVoltage + readVoltage[9:0]));
+                    address <= writeAdr - 13'h200;
                 end 
-                10'h3: begin        // add chorus 1
-                    if (switch[2])  sumVoltage <= readVoltage[10] ? (sumVoltage - readVoltage[9:0]) : (sumVoltage + readVoltage[9:0]);
-                    address <= writeAdr - 13'hC0;
+                10'h4: begin        // add chorus 1
+                    if (switch[2])  sumVoltage <= (readVoltage[10] ? (sumVoltage - readVoltage[9:1]) : (sumVoltage + readVoltage[9:1]));
+                    address <= writeAdr - 13'h300;
                 end
-                10'h4: begin        // add chorus 2
-                    if (switch[2])  sumVoltage <= readVoltage[10] ? (sumVoltage - readVoltage[9:0]) : (sumVoltage + readVoltage[9:0]);
-                    address <= writeAdr - 13'h100;
+                10'h5: begin        // add chorus 2
+                    if (switch[2])  sumVoltage <= (readVoltage[10] ? (sumVoltage - readVoltage[9:1]) : (sumVoltage + readVoltage[9:1]));
+                    address <= writeAdr - 13'h400;
                 end
-                10'h5: begin        // add chorus 3
-                    if (switch[2])  sumVoltage <= readVoltage[10] ? (sumVoltage - readVoltage[9:0]) : (sumVoltage + readVoltage[9:0]);
+                10'h6: begin        // add chorus 3
+                    if (switch[2])  sumVoltage <= (readVoltage[10] ? (sumVoltage - readVoltage[9:1]) : (sumVoltage + readVoltage[9:1]));
+                    address <= writeAdr;
                 end
-                10'h6: begin        // calculate sendVoltageSign
+                10'h7: begin        // calculate sendVoltageSign
                     sendVoltageSign <= sumVoltage[15];
                     sumVoltage <= sumVoltage[15] ? -sumVoltage : sumVoltage; 
                 end
-                10'h7: begin        // add overdrive to sendVoltageMag with saturation
-                    // add overdrive
+                10'h8: begin        // add overdrive to sendVoltageMag with saturation
                     if (switch[0])  sendVoltageMag <= (sumVoltage > 16'h7F) ? 10'hFF : {sumVoltage[8:0], 1'b0};                   
                     else            sendVoltageMag <= (sumVoltage > 16'h3FF) ? 10'h3FF : sumVoltage[9:0];
                 end
-                10'h8: begin        // add solo effect by inverting sendVoltageMag
-                    if (switch[3])  sendVoltageMag <= (sendVoltageMag > 4'hC) ? (-sendVoltageMag) >>> 1 : 1'b0;
+                10'h9: begin        // add solo effect by inverting sendVoltageMag
+                    if (switch[3])  sendVoltageMag <= (sendVoltageMag > 4'hC) ? (-sendVoltageMag) >> 1 : 1'b0;
                 end 
-                10'h9: begin        // update LEDs
+                10'h10: begin        // update LEDs
                     led <= sendVoltageMag[9:2];
                 end
             endcase
 
+            // update counters
             sclkGen <= (counter == 10'd832) ? 1'b0 : sclkGen + 1'b1; 
             counter <= (counter == 10'd832) ? 1'b0 : counter + 1'b1;
         end
