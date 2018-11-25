@@ -95,19 +95,22 @@ module FPGA(input logic clk, reset,
                     address <= writeAdr + 1'b1;
                 end
                 10'h3: begin        // add digital delay
-                    if (switch[1])  sumVoltage <= (readVoltage[10] ? (sumVoltage - readVoltage[9:0]) : (sumVoltage + readVoltage[9:0]));
+                    if (switch[1])  sumVoltage <= (readVoltage[10] ? (sumVoltage - ((readVoltage[9:0]*intensity)>>3)) : (sumVoltage + ((readVoltage[9:0]*intensity)>>3)));
                     address <= writeAdr - 13'h200;
                 end 
                 10'h4: begin        // add chorus 1
                     if (switch[2])  sumVoltage <= (readVoltage[10] ? (sumVoltage - readVoltage[9:1]) : (sumVoltage + readVoltage[9:1]));
+                    // if (switch[2])  sumVoltage <= (readVoltage[10] ? (sumVoltage - ((readVoltage[9:1]*intensity)>>3)) : (sumVoltage + ((readVoltage[9:1]*intensity)>>3)));
                     address <= writeAdr - 13'h300;
                 end
                 10'h5: begin        // add chorus 2
                     if (switch[2])  sumVoltage <= (readVoltage[10] ? (sumVoltage - readVoltage[9:1]) : (sumVoltage + readVoltage[9:1]));
+                    // if (switch[2])  sumVoltage <= (readVoltage[10] ? (sumVoltage - ((readVoltage[9:1]*intensity)>>3)) : (sumVoltage + ((readVoltage[9:1]*intensity)>>3)));
                     address <= writeAdr - 13'h400;
                 end
                 10'h6: begin        // add chorus 3
                     if (switch[2])  sumVoltage <= (readVoltage[10] ? (sumVoltage - readVoltage[9:1]) : (sumVoltage + readVoltage[9:1]));
+                    // if (switch[2])  sumVoltage <= (readVoltage[10] ? (sumVoltage - ((readVoltage[9:1]*intensity)>>3)) : (sumVoltage + ((readVoltage[9:1]*intensity)>>3)));
                     address <= writeAdr;
                 end
                 10'h7: begin        // calculate sendVoltageSign
@@ -116,6 +119,7 @@ module FPGA(input logic clk, reset,
                 end
                 10'h8: begin        // add overdrive to sendVoltageMag with saturation
                     if (switch[0])  sendVoltageMag <= (sumVoltage > 16'h7F) ? 10'hFF : {sumVoltage[8:0], 1'b0};                   
+                    // if (switch[0])  sendVoltageMag <= (sumVoltage > 16'h3FF-intensity*7'h70) ? 10'hFF : {sumVoltage[8:0], 1'b0}; // Bumped threshold down for higher intensity. 
                     else            sendVoltageMag <= (sumVoltage > 16'h3FF) ? 10'h3FF : sumVoltage[9:0];
                 end
                 10'h9: begin        // add solo effect by inverting sendVoltageMag

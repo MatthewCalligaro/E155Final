@@ -6,7 +6,7 @@ module distance(input logic clk,                // 40 MHz clock.
                 input logic reset,              // Hardware reset. 
                 input logic echo,               // Echo pin.
                 output logic trig,              // Trigger pin.
-                output logic[2:0] intensity);   // Intensity level--higher meaning closer.
+                output logic[3:0] intensity);   // Intensity level--higher meaning closer.
     logic [5:0] ucount; // Counts up to 1 us; reset when you hit 40. 
     logic uclk; // Has a posedge once every us. 
     logic [15:0] counter; // Counts up once every us; proxy for state. 
@@ -48,14 +48,15 @@ module distance(input logic clk,                // 40 MHz clock.
         
     always_comb // Evenly split 3552us into intervals of 444. 
     begin
-        if(saveresult > 12'd3108)           intensity = 3'd0; // Farthest; least intense. 
-        else if(saveresult > 12'd2664)      intensity = 3'd1;
-        else if(saveresult > 12'd2220)      intensity = 3'd2;
-        else if(saveresult > 12'd1776)      intensity = 3'd3;
-        else if(saveresult > 12'd1332)      intensity = 3'd4;
-        else if(saveresult > 12'd888)       intensity = 3'd5;
-        else if(saveresult > 12'd444)       intensity = 3'd6;
-        else if(saveresult > 0)             intensity = 3'd7; // Closest; most intense.
+        if(saveresult > 12'd3552)           intensity = 3'd0; // Farthest; least intense. 
+        else if(saveresult > 12'd3108)      intensity = 3'd1; 
+        else if(saveresult > 12'd2664)      intensity = 3'd2;
+        else if(saveresult > 12'd2220)      intensity = 3'd3;
+        else if(saveresult > 12'd1776)      intensity = 3'd4;
+        else if(saveresult > 12'd1332)      intensity = 3'd5;
+        else if(saveresult > 12'd888)       intensity = 3'd6;
+        else if(saveresult > 12'd444)       intensity = 3'd7;
+        else if(saveresult > 0)             intensity = 3'd8; // Closest; most intense.
         else                                intensity = 3'd0; // If we see a value that we don't know how to handle, read a 0. 
     end
         
