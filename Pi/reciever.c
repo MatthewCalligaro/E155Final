@@ -13,7 +13,7 @@
 
 // Program constants
 #define VOLUME 16           // volume multiplier
-#define BUF_SIZE (1 << 21)  // size of recording buffer
+#define BUF_SIZE (1 << 24)  // size of recording buffer
 #define INPUT_BITS 11       // bit depth of FPGA signal
 #define FLASH_TIME 200      // LED flash time in miliseconds
 #define DEBOUNCE_TIME 5     // time in miliseconds to wait for inputs to debounce
@@ -35,7 +35,8 @@
 #define BIT_RATE (SAMPLE_RATE * BIT_DEPTH * CHANNELS / 8)
 #define BYTES_PER_SAMPLE (BIT_DEPTH * CHANNELS / 8)
 
-
+// Buffer for recording
+short buffer[BUF_SIZE];
 
 ////////////////////////////////
 //  Structs
@@ -182,7 +183,6 @@ int main()
     float dut;
 
     // Recording variables
-    short buffer[BUF_SIZE];
     size_t recordIndex = loadRecording(buffer);
     size_t playIndex = 0;
 
