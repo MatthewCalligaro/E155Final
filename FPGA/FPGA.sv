@@ -6,6 +6,8 @@
 module FPGA(input logic clk, reset,
             input logic dinAdc,
             input logic [3:0] switch,
+            input logic trig,
+            output logic echo,
             output logic sclkAdc, doutAdc, ncsAdc, 
             output logic sclkPi, doutPi, ncsPi,
             output logic [7:0] led);
@@ -35,10 +37,14 @@ module FPGA(input logic clk, reset,
     logic [9:0] sendVoltageMag;     // magnitude of voltage to send to pi
     logic sendVoltageSign;          // sign of voltage to send to pi
 
+    // Intensity of effects
+    logic [3:0] intensity;
+
     // Modules
     adc adc1(sclkAdc, reset, spiStart, 1'b0, dinAdc, doutAdc, ncsAdc, sampleVoltage);
     pi pi1(sclkPi, reset, spiStart, {sendVoltageSign, sendVoltageMag}, doutPi, ncsPi);
     mem mem1(clk, WE, address, writeVoltage, readVoltage);
+    distance distance1(clk, reset, trig, echo, intensity);
 
     // Registers
     always_ff @(posedge clk, posedge reset) begin
