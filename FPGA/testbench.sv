@@ -5,12 +5,12 @@
 
 module testbench();    
 
-logic clk, reset, dinAdc, switch, sclkAdc, doutAdc, ncsAdc, sclkPi, doutPi, ncsPi;
+logic clk, reset, dinAdc, sclkAdc, doutAdc, ncsAdc, sclkPi, doutPi, ncsPi;
 logic [7:0] led;
 logic [3:0] switch = 0;
 logic [7:0] counter = 0;
 
-FPGA dut(clk, reset, dinAdc, sclkAdc, doutAdc, ncsAdc, sclkPi, doutPi, ncsPi, led);
+FPGA dut(clk, reset, dinAdc, switch, sclkAdc, doutAdc, ncsAdc, sclkPi, doutPi, ncsPi, led);
 
 // Pulse reset
 initial begin

@@ -11,10 +11,6 @@
 //  Constants
 ////////////////////////////////
 
-// Resistors:
-// LED: 220 ohms
-// Switches: 10 kohms
-
 // Program constants
 #define VOLUME 16           // volume multiplier
 #define BUF_SIZE (1 << 21)  // size of recording buffer
@@ -360,7 +356,7 @@ int main()
             {
                 // Set output volume with PWM
                 setPWM(SAMPLE_RATE / 2, dut);
-                inCycle = 1;
+                reading = 1;
                 curSCLK = digitalRead(SCLK);
                 lastSCLK = curSCLK;   
             }
