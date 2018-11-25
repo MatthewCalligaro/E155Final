@@ -1,13 +1,13 @@
 // Name: Matthew Calligaro
 // Email: mcalligaro@g.hmc.edu
 // Date: 11/7/2018
-// Summary: 
+// Summary: Testbench to verify FPGA module
 
 module testbench();    
 
-logic clk, reset, dinAdc, sclkAdc, doutAdc, ncsAdc, sclkPi, doutPi, ncsPi;
+logic clk, reset, dinAdc, switch, sclkAdc, doutAdc, ncsAdc, sclkPi, doutPi, ncsPi;
 logic [7:0] led;
-
+logic [3:0] switch = 0;
 logic [7:0] counter = 0;
 
 FPGA dut(clk, reset, dinAdc, sclkAdc, doutAdc, ncsAdc, sclkPi, doutPi, ncsPi, led);
