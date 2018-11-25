@@ -9,7 +9,7 @@ module Lab01(input logic clk, 			// 40 MHz clock
 				 output logic[7:0] led);	// LED bars
 	logic [5:0] ucount; // Counts up to 1 us; reset when you hit 40. 
 	logic uclk; // Posedge once every us. 
-	logic [8:0] counter; // Counts up; proxy for state. 
+	logic [15:0] counter; // Counts up; proxy for state. 
 	logic [11:0] accumulateresult; 	// Keeps track of how long echo has been raised. 
 	logic [11:0] save; 					// If we assume a 10-foot max range (as in dsheet), we get 17760 us as our max. 
 												// If instead we assume a use range of 2 feet, we get 3552. 
@@ -31,6 +31,7 @@ module Lab01(input logic clk, 			// 40 MHz clock
 		// Reset on 60 ms or 60000 us
 		if(counter == 16'd60000)
 		begin
+			led[0] = 1;
 			save = accumulateresult;
 			counter = 0;
 			accumulateresult = 0;
@@ -38,13 +39,15 @@ module Lab01(input logic clk, 			// 40 MHz clock
 		end
 		else
 		begin
-			if(counter == 16'd10) trig = 0; 
+			if(counter == 16'd20) trig = 0; 
 			counter++; // Always do this, regardless of triggering. 
 		end
 			
 		if(echo)
 			accumulateresult++;
 	end
+	
+//	assign led[0] = (uclk == 0);
 		
 	always_comb
 	begin
@@ -55,7 +58,7 @@ module Lab01(input logic clk, 			// 40 MHz clock
 		led[3] = (save > 12'd1332);
 		led[2] = (save > 12'd888);
 		led[1] = (save > 12'd444);
-		led[0] = (save > 0);
+//		led[0] = (save > 0);
 	end
 
 //		assign led[7] = (save > 12'd3108);
