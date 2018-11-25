@@ -3,6 +3,7 @@
 // 2018.11.24
 // Return intensity level according to HC-SR04 distance sensor. 
 module distance(input logic clk,                // 40 MHz clock.
+                input logic reset,              // Hardware reset. 
                 input logic echo,               // Echo pin.
                 output logic trig,              // Trigger pin.
                 output logic[3:0] intensity);   // Intensity level--higher meaning closer.
@@ -14,9 +15,9 @@ module distance(input logic clk,                // 40 MHz clock.
                                     // If instead we assume a use range of 2 feet, we get 3552 us. 
     
     // Generate us clock.
-    always_ff@(posedge clk)
+    always_ff@(posedge clk, posedge reset)
     begin
-        if(ucount == 6'd39) // Reset. 
+        if(reset || ucount == 6'd39) // Reset. 
             ucount = 0;
         else
             ucount++;
@@ -25,10 +26,10 @@ module distance(input logic clk,                // 40 MHz clock.
             uclk = !uclk; 
     end
         
-    always_ff@(posedge uclk)
+    always_ff@(posedge uclk, posedge reset)
     begin
         // Reset on 60 ms (60000 us).
-        if(counter == 16'd59999)
+        if(reset || counter == 16'd59999)
         begin
             save = accumulateresult;
             counter = 0;
