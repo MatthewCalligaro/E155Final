@@ -11,8 +11,7 @@ module FPGA(input logic clk, reset,
             output logic [7:0] led);
     
     // Clock and SPI
-    logic [7:0] sclkGen;    // counter to generate sclks
-    logic [9:0] counter;    // counter to sample at 48 KHz
+    logic [9:0] counter;    // counter to sample at 48 KHz and generate sclks
     logic spiStart;         // raises when SPI modules should start the next cycle
 
     // Calibration
@@ -43,8 +42,7 @@ module FPGA(input logic clk, reset,
     // Registers
     always_ff @(posedge clk, posedge reset) begin
         // on reset, reset relevant registers and enter calibration mode
-        if (reset) begin
-            sclkGen <= 0;
+        if (reset) begin;
             counter <= 0;
             writeAdr <= 0;
             increaseAdr <= 0;
@@ -120,14 +118,13 @@ module FPGA(input logic clk, reset,
                 end
             endcase
 
-            // update counters
-            sclkGen <= (counter == 10'd832) ? 1'b0 : sclkGen + 1'b1; 
+            // update counter
             counter <= (counter == 10'd832) ? 1'b0 : counter + 1'b1;
         end
     end
 
     assign spiStart = counter < 10'd416;    // raises when counter == 0
     assign WE = counter == 10'd832;         // store writeVoltage on last clk of each cycle
-    assign sclkAdc = sclkGen[3];            // ADC's sclk = 2.5 MHz (16 clks)
-    assign sclkPi = sclkGen[5];             // Pi's sclk  = 625 KHz (64 clks)
+    assign sclkAdc = counter[3];            // ADC's sclk = 2.5 MHz (16 clks)
+    assign sclkPi = counter[5];             // Pi's sclk  = 625 KHz (64 clks)
 endmodule
