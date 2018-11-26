@@ -14,7 +14,7 @@ module Lab01(input logic clk,           // 40 MHz clock.
     // Track how long echo has been raised. 
     logic [11:0] accumulateresult;  // Gets the next sensor value.
     logic [11:0] hold;              // Persists the last sensor value.
-	 logic [11:0] clean[5:0]; 			// Save the last five values.
+	 logic [11:0] clean[10:0]; 			// Save the last 10 values.
 	 logic [11:0] save; 					// Hold actual result.
                                     // Assuming a use range of 2 feet, the maximum is 3552 us.
     
@@ -36,7 +36,7 @@ module Lab01(input logic clk,           // 40 MHz clock.
         // Reset on 60 ms (60000 us).
         if(counter == 16'd59999)
         begin
-            hold = accumulateresult;
+           hold = accumulateresult;
             counter = 0;
             accumulateresult = 0;
             trig = 1; // Raise trig, beginning of cycle. 
@@ -54,16 +54,21 @@ module Lab01(input logic clk,           // 40 MHz clock.
 	 
 	always_ff@(posedge trig)
 	begin
-		clean[4] <= hold;
+		clean[9] <= hold;
+		clean[8] <= clean[9];
+		clean[7] <= clean[8];
+		clean[6] <= clean[7];
+		clean[5] <= clean[6];
+		clean[4] <= clean[5];
 		clean[3] <= clean[4];
 		clean[2] <= clean[3];
 		clean[1] <= clean[2];
 		clean[0] <= clean[1];
-		// When in doubt, bump it high. 
-		if(clean[4] > 12'd3108 || clean[4] > 12'd3108 || clean[4] > 12'd3108 || clean[4] > 12'd3108 || clean[4] > 12'd3108)
+		// When in doubt, set save to max. 
+		if(hold > 12'd3108 || clean[9] > 12'd3108 || clean[8] > 12'd3108 || clean[7] > 12'd3108 || clean[6] > 12'd3108 || clean[5] > 12'd3108  || clean[4] > 12'd3108 || clean[3] > 12'd3108 || clean[2] > 12'd3108 || clean[1] > 12'd3108 || clean[0] > 12'd3108)
 			save <= 12'd3552; 
 		else
-			save <= clean[0];
+			save <= hold;
 	end
         
     // Set LEDs according to latest distance reading. 
