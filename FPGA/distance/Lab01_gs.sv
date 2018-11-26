@@ -48,33 +48,43 @@ module distance(input logic clk,                // 40 MHz clock.
     // Generate us clock.
     always_ff@(posedge clk, posedge reset)
     begin
-        if(reset || ucount == 6'd39) // Reset. 
+        if(reset) // Reset. 
             ucount = 0;
-        else
+        else if (ucount == 6'd39) // Also reset. 
+				ucount = 0;
+		  else
+		  begin
             ucount++;
-            
-        if(ucount % 20 == 0) // Hit half a us. 
-            uclk = !uclk; 
+				if(ucount % 20 == 0) // Hit half a us. 
+					uclk = !uclk; 
+		  end
     end
         
     always_ff@(posedge uclk, posedge reset)
     begin
         // Reset on 60 ms (60000 us).
-        if(reset || counter == 16'd59999)
+        if(reset)
         begin
             saveresult = accumulateresult;
             counter = 0;
             accumulateresult = 0;
             trig = 1; // Raise trig, beginning of cycle. 
         end
+		  else if(counter == 16'd59999)
+		  begin
+			   saveresult = accumulateresult;
+            counter = 0;
+            accumulateresult = 0;
+            trig = 1; // Raise trig, beginning of cycle. 
+		  end
         else
         begin
             if(counter == 16'd19) trig = 0; // Stop triggering; 10 us didn't work, so I bumped this to 20. 
-            counter++; // Regardless of trigger state, continue counting. 
+            counter++; // Regardless of trigger state, continue counting.             
+			   if(echo) // Count how long echo is raised. 
+					 accumulateresult++;
         end
-            
-        if(echo) // Count how long echo is raised. 
-            accumulateresult++;
+
     end
         
     always_comb // Evenly split 3552us into intervals of 444. 
