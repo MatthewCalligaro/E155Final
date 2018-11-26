@@ -253,22 +253,23 @@ module Lab01(input logic clk, reset, // TODO: I'm sorry
                     address <= writeAdr + 1'b1;
                 end
                 10'h3: begin        // add digital delay
-                    if (switch[1])  sumVoltage <= (readVoltage[10] ? (sumVoltage - ((readVoltage[9:0]*intensity)>>3)) : (sumVoltage + ((readVoltage[9:0]*intensity)>>3)));
+                    if (switch[1])  sumVoltage <= (readVoltage[10] ? (sumVoltage - readVoltage[9:0]) : (sumVoltage + readVoltage[9:0]);
                     address <= writeAdr - 13'h200;
+//                    address <= writeAdr - 13'h100- ((13'h100 * intensity) >> 3);						  
                 end 
                 10'h4: begin        // add chorus 1
                     if (switch[2])  sumVoltage <= (readVoltage[10] ? (sumVoltage - readVoltage[9:1]) : (sumVoltage + readVoltage[9:1]));
-                    // if (switch[2])  sumVoltage <= (readVoltage[10] ? (sumVoltage - ((readVoltage[9:1]*intensity)>>3)) : (sumVoltage + ((readVoltage[9:1]*intensity)>>3)));
-                    address <= writeAdr - 13'h300;
+//                    address <= writeAdr - 13'h300;
+						  address <= writeAdr - 13'h200 - ((13'h100 * intensity) >> 3);
                 end
                 10'h5: begin        // add chorus 2
                     if (switch[2])  sumVoltage <= (readVoltage[10] ? (sumVoltage - readVoltage[9:1]) : (sumVoltage + readVoltage[9:1]));
-                    // if (switch[2])  sumVoltage <= (readVoltage[10] ? (sumVoltage - ((readVoltage[9:1]*intensity)>>3)) : (sumVoltage + ((readVoltage[9:1]*intensity)>>3)));
-                    address <= writeAdr - 13'h400;
+//                    address <= writeAdr - 13'h400;
+						  address <= writeAdr - 13'h300 - ((13'h100 * intensity) >> 3);
+
                 end
                 10'h6: begin        // add chorus 3
                     if (switch[2])  sumVoltage <= (readVoltage[10] ? (sumVoltage - readVoltage[9:1]) : (sumVoltage + readVoltage[9:1]));
-                    // if (switch[2])  sumVoltage <= (readVoltage[10] ? (sumVoltage - ((readVoltage[9:1]*intensity)>>3)) : (sumVoltage + ((readVoltage[9:1]*intensity)>>3)));
                     address <= writeAdr;
                 end
                 10'h7: begin        // calculate sendVoltageSign
@@ -282,6 +283,7 @@ module Lab01(input logic clk, reset, // TODO: I'm sorry
                 end
                 10'h9: begin        // add solo effect by inverting sendVoltageMag
                     if (switch[3])  sendVoltageMag <= (sendVoltageMag > 4'hC) ? (-sendVoltageMag) >> 1 : 1'b0;
+//						 if (switch[3])  sendVoltageMag <= (sendVoltageMag > 4'hC) ? (-sendVoltageMag) >> intensity : 1'b0;
                 end 
                 10'h10: begin        // update LEDs
                     led <= sendVoltageMag[9:2];
