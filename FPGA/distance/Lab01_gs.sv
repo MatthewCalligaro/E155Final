@@ -2,7 +2,7 @@
 // gserate@g.hmc.edu
 // 2018.11.24
 // Turns on elements of an LED array according to HC-SR04 distance sensor. 
-module distance(input logic clk,           // 40 MHz clock.
+module Lab01(input logic clk,           // 40 MHz clock.
                 input logic echo,          // Echo pin.
                 output logic trig,         // Trigger pin.
                 output logic[7:0] led);    // LED bars.
@@ -13,7 +13,9 @@ module distance(input logic clk,           // 40 MHz clock.
     
     // Track how long echo has been raised. 
     logic [11:0] accumulateresult;  // Gets the next sensor value.
-    logic [11:0] save;              // Persists the last sensor value.
+    logic [11:0] hold;              // Persists the last sensor value.
+	 logic [11:0] clean[5:0]; 			// Save the last five values.
+	 logic [11:0] save; 					// Hold actual result.
                                     // Assuming a use range of 2 feet, the maximum is 3552 us.
     
     // Generate us clock.
@@ -34,7 +36,7 @@ module distance(input logic clk,           // 40 MHz clock.
         // Reset on 60 ms (60000 us).
         if(counter == 16'd59999)
         begin
-            save = accumulateresult;
+            hold = accumulateresult;
             counter = 0;
             accumulateresult = 0;
             trig = 1; // Raise trig, beginning of cycle. 
@@ -49,6 +51,20 @@ module distance(input logic clk,           // 40 MHz clock.
         if(echo) // Count how long echo is raised. 
             accumulateresult++;
     end
+	 
+	always_ff@(posedge trig)
+	begin
+		clean[4] <= hold;
+		clean[3] <= clean[4];
+		clean[2] <= clean[3];
+		clean[1] <= clean[2];
+		clean[0] <= clean[1];
+		// When in doubt, bump it high. 
+		if(clean[4] > 12'd3108 || clean[4] > 12'd3108 || clean[4] > 12'd3108 || clean[4] > 12'd3108 || clean[4] > 12'd3108)
+			save <= 12'd3552; 
+		else
+			save <= clean[0];
+	end
         
     // Set LEDs according to latest distance reading. 
     always_comb // Split into intervals of 444. 
