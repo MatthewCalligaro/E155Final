@@ -63,6 +63,18 @@ set_location_assignment PIN_72 -to led[4]
 set_location_assignment PIN_73 -to led[5]
 set_location_assignment PIN_74 -to led[6]
 set_location_assignment PIN_75 -to led[7]
-set_location_assignment PIN_58 -to echo
-set_location_assignment PIN_55 -to trig
+set_location_assignment PIN_30 -to echo
+set_location_assignment PIN_32 -to trig
+set_location_assignment PIN_85 -to dinAdc
+set_location_assignment PIN_86 -to doutAdc
+set_location_assignment PIN_105 -to doutPi
+set_location_assignment PIN_87 -to ncsAdc
+set_location_assignment PIN_111 -to ncsPi
+set_location_assignment PIN_1 -to reset
+set_location_assignment PIN_84 -to sclkAdc
+set_location_assignment PIN_100 -to sclkPi
+set_location_assignment PIN_83 -to switch[3]
+set_location_assignment PIN_80 -to switch[2]
+set_location_assignment PIN_77 -to switch[1]
+set_location_assignment PIN_76 -to switch[0]
 set_instance_assignment -name PARTITION_HIERARCHY root_partition -to | -section_id Top
