@@ -1,3 +1,58 @@
+// Name: Matthew Calligaro
+// Email: mcalligaro@g.hmc.edu
+// Date: 11/7/2018
+// Summary: RAM module with read and write capabilities
+// Code adapted from Digital Design and Computer Architecture, 455
+
+// Always write and read; this is my best approx of a fifo, but technically random access . . . eh
+module mem(input logic clk, reset,
+           input logic [11:0] WD,
+           output logic [11:0] RD);
+			  
+	logic [3:0] WA;
+	logic [3:0] RA;
+	logic [11:0] RAM[14:0];
+	
+	always_ff@(posedge clk, posedge reset)
+	begin
+		if(reset) 
+		begin
+			WA <= 4'd14;
+			RA <= 0;
+		end
+		else
+		begin
+			RAM[WA] <= WD;
+			RD <= RAM[RA];
+			WA <= WA + 1;
+			RA <= RA + 1;
+		end
+	end
+
+endmodule
+
+module saveavg(input logic clk, reset,
+					input logic[11:0] latest,
+					output logic[11:0] avg);
+					
+	logic [11:0] oldest;
+	logic [15:0] sum;
+	mem summem(clk, reset, latest, oldest);
+	
+	always_ff@(posedge clk, posedge reset)
+	begin
+		if(reset) sum = 15'd53280;
+		else
+		begin
+			sum -= oldest;
+			sum += latest;
+		end
+	end
+	
+	assign avg = sum / 4'd15;
+					
+endmodule
+
 // Giselle Serate
 // gserate@g.hmc.edu
 // 2018.11.24
@@ -54,8 +109,9 @@ module Lab01(input logic clk,           // 40 MHz clock.
             accumulateresult++;
     end
 	 
-	always_ff@(posedge trig)
-	begin
+	saveavg smoother(trig, reset, hold, save);
+//	always_ff@(posedge trig)
+//	begin
 //		clean[9] <= hold;
 //		clean[8] <= clean[9];
 //		clean[7] <= clean[8];
@@ -78,10 +134,10 @@ module Lab01(input logic clk,           // 40 MHz clock.
 ////		if(hold > 12'd3108 || clean[14] > 12'd3108 || clean[13] > 12'd3108 || clean[12] > 12'd3108 || clean[11] > 12'd3108 || clean[10] > 12'd3108)
 //			save <= 12'd3552; 
 //		else
-			save <= hold;
-			// Consider instead a median filter. Or like, an average filter. Or something. Super noisy. No Kalman filters. Not doing that. 
-//			Consider: https://zipcpu.com/dsp/2017/10/16/boxcar.html
-	end
+//			save <= hold;
+//			// Consider instead a median filter. Or like, an average filter. Or something. Super noisy. No Kalman filters. Not doing that. 
+////			Consider: https://zipcpu.com/dsp/2017/10/16/boxcar.html
+//	end
         
     // Set LEDs according to latest distance reading. 
     always_comb // Split into intervals of 444. 
