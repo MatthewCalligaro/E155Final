@@ -44,19 +44,15 @@ module saveavg(input logic clk, reset,
 	
 	always_ff@(posedge clk, posedge reset)
 	begin
-		if(reset)
-		begin
-			sum = 15'd24864; // Initialize to a sum indicating low application of effects.
-			avg = 12'd3552;
-		end
+		if(reset) sum = 15'd24864; // Initialize to a sum indicating low application of effects.
 		else
 		begin
-			// Update sum and calculate average. 
-			sum <= sum - oldest;
-			sum <= sum + latest;
-			avg <= sum / 4'd7;
+			// Update sum. 
+			sum -= oldest;
+			sum += latest;
 		end
 	end
+	assign avg = sum / 4'd7;
 endmodule
 
 // Giselle Serate
