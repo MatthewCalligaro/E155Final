@@ -9,15 +9,15 @@ module mem(input logic clk, reset,
            input logic [11:0] WD,
            output logic [11:0] RD);
 			  
-	logic [3:0] WA;
-	logic [3:0] RA;
+	logic [2:0] WA;
+	logic [2:0] RA;
 	logic [11:0] RAM[14:0];
 	
 	always_ff@(posedge clk, posedge reset)
 	begin
 		if(reset) 
 		begin
-			WA <= 4'd14;
+			WA <= 4'd7;
 			RA <= 0;
 		end
 		else
@@ -41,7 +41,8 @@ module saveavg(input logic clk, reset,
 	
 	always_ff@(posedge clk, posedge reset)
 	begin
-		if(reset) sum = 15'd53280;
+//		if(reset) sum = 15'd53280; // 15
+		if(reset) sum = 15'd24864; // 7
 		else
 		begin
 			sum -= oldest;
@@ -49,7 +50,7 @@ module saveavg(input logic clk, reset,
 		end
 	end
 	
-	assign avg = sum / 4'd15;
+	assign avg = sum / 4'd7;
 					
 endmodule
 
