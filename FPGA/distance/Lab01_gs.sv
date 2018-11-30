@@ -4,26 +4,26 @@
 // Summary: RAM module with read and write capabilities
 // Code adapted from Digital Design and Computer Architecture, 455
 
-// Ring buffer which always writes and reads on clock. 
-module ring(input logic clk, reset,
-            input logic [11:0] WD,
-            output logic [11:0] RD);
+// Always write and read; this is my best approx of a fifo, but technically random access . . . eh
+module mem(input logic clk, reset,
+           input logic [11:0] WD,
+           output logic [11:0] RD);
 			  
 	logic [2:0] WA;
 	logic [2:0] RA;
-	logic [11:0] memory[14:0];
+	logic [11:0] RAM[14:0];
 	
 	always_ff@(posedge clk, posedge reset)
 	begin
-		if(reset) // Set read pointer one ahead of write pointer. 
-		begin 
+		if(reset) 
+		begin
 			WA <= 4'd7;
 			RA <= 0;
 		end
 		else
-		begin // Read and write data; update addresses. 
-			memory[WA] <= WD;
-			RD <= memory[RA];
+		begin
+			RAM[WA] <= WD;
+			RD <= RAM[RA];
 			WA <= WA + 1;
 			RA <= RA + 1;
 		end
@@ -31,32 +31,27 @@ module ring(input logic clk, reset,
 
 endmodule
 
-// Average current and last 6 data points. 
 module saveavg(input logic clk, reset,
 					input logic[11:0] latest,
 					output logic[11:0] avg);
 					
 	logic [11:0] oldest;
 	logic [15:0] sum;
-	
-	// Get oldest reading from memory, write newest reading.
-	ring summem(clk, reset, latest, oldest);
+	mem summem(clk, reset, latest, oldest);
 	
 	always_ff@(posedge clk, posedge reset)
 	begin
-		if(reset)
-		begin
-			sum = 15'd24864; // Initialize to a sum indicating low application of effects.
-			avg = 12'd3552;
-		end
+//		if(reset) sum = 15'd53280; // 15
+		if(reset) sum = 15'd24864; // 7
 		else
 		begin
-			// Update sum and calculate average. 
-			sum <= sum - oldest;
-			sum <= sum + latest;
-			avg <= sum / 4'd7;
+			sum -= oldest;
+			sum += latest;
 		end
 	end
+	
+	assign avg = sum / 4'd7;
+					
 endmodule
 
 // Giselle Serate
@@ -115,8 +110,35 @@ module Lab01(input logic clk,           // 40 MHz clock.
             accumulateresult++;
     end
 	 
-	 // Apply moving average filter. 
 	saveavg smoother(trig, reset, hold, save);
+//	always_ff@(posedge trig)
+//	begin
+//		clean[9] <= hold;
+//		clean[8] <= clean[9];
+//		clean[7] <= clean[8];
+//		clean[6] <= clean[7];
+//		clean[5] <= clean[6];
+//		clean[4] <= clean[5];
+//		clean[3] <= clean[4];
+//		clean[2] <= clean[3];
+//		clean[1] <= clean[2];
+//		clean[0] <= clean[1];
+//		if(hold < 1776 || hold > 2220) // I see a lot of noise coming from this band; this is where we're at if we don't plug in the sensor. 
+//			clean[14] <= hold; // save <= hold;		
+//		for(i=14;i>0;i=i-1) clean[i-1] <= clean[i];
+//		// When in doubt, set save to max. 
+//		// last 15
+////		if(hold > 12'd3108 || clean[14] > 12'd3108 || clean[13] > 12'd3108 || clean[12] > 12'd3108 || clean[11] > 12'd3108 || clean[10] > 12'd3108 || clean[9] > 12'd3108 || clean[8] > 12'd3108 || clean[7] > 12'd3108 || clean[6] > 12'd3108 || clean[5] > 12'd3108  || clean[4] > 12'd3108 || clean[3] > 12'd3108 || clean[2] > 12'd3108 || clean[1] > 12'd3108 || clean[0] > 12'd3108)
+//		// last 10		
+//		if(hold > 12'd3108 || clean[14] > 12'd3108 || clean[13] > 12'd3108 || clean[12] > 12'd3108 || clean[11] > 12'd3108 || clean[10] > 12'd3108 || clean[9] > 12'd3108 || clean[8] > 12'd3108 || clean[7] > 12'd3108 || clean[6] > 12'd3108 || clean[5] > 12'd3108)
+//		// last 5
+////		if(hold > 12'd3108 || clean[14] > 12'd3108 || clean[13] > 12'd3108 || clean[12] > 12'd3108 || clean[11] > 12'd3108 || clean[10] > 12'd3108)
+//			save <= 12'd3552; 
+//		else
+//			save <= hold;
+//			// Consider instead a median filter. Or like, an average filter. Or something. Super noisy. No Kalman filters. Not doing that. 
+////			Consider: https://zipcpu.com/dsp/2017/10/16/boxcar.html
+//	end
         
     // Set LEDs according to latest distance reading. 
     always_comb // Split into intervals of 444. 
