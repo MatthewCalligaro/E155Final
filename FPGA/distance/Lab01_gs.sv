@@ -1,64 +1,75 @@
-// Name: Matthew Calligaro
-// Email: mcalligaro@g.hmc.edu
-// Date: 11/7/2018
-// Summary: RAM module with read and write capabilities
-// Code adapted from Digital Design and Computer Architecture, 455
+// Giselle Serate
+// gserate@g.hmc.edu
+// 2018.11.30
+// Sets LED bars according to the distance read from HC-SR04 ultrasonic sensor. 
+// Applies boxcar average filter. 
 
 // Ring buffer which always writes and reads on clock. 
 module ring(input logic clk, reset,
             input logic [11:0] WD,
             output logic [11:0] RD);
-			  
-	logic [2:0] WA;
-	logic [2:0] RA;
-	logic [11:0] memory[14:0];
-	
-	always_ff@(posedge clk, posedge reset)
-	begin
-		if(reset) // Set read pointer one ahead of write pointer. 
-		begin 
-			WA <= 4'd7;
-			RA <= 0;
-		end
-		else
-		begin // Read and write data; update addresses. 
-			memory[WA] <= WD;
-			RD <= memory[RA];
-			WA <= WA + 1;
-			RA <= RA + 1;
-		end
-	end
+              
+    logic [2:0] WA;
+    logic [2:0] RA;
+    logic [11:0] memory[14:0];
+    
+    always_ff@(posedge clk, posedge reset)
+    begin
+        if(reset) 
+        begin 
+            // Initialize read pointer one ahead of write pointer. 
+            WA <= 4'd7;
+            RA <= 0;
+        end
+        else
+        begin
+            // Read and write data; update addresses. 
+            memory[WA] <= WD;
+            RD <= memory[RA];
+            WA <= WA + 1;
+            RA <= RA + 1;
+        end
+    end
 
 endmodule
 
 // Average current and last 6 data points. 
 module saveavg(input logic clk, reset,
-					input logic[11:0] latest,
-					output logic[11:0] avg);
-					
-	logic [11:0] oldest;
-	logic [15:0] sum;
-	
-	// Get oldest reading from memory, write newest reading.
-	ring summem(clk, reset, latest, oldest);
-	
-	always_ff@(posedge clk, posedge reset)
-	begin
-		if(reset) sum = 15'd24864; // Initialize to a sum indicating low application of effects.
-		else
-		begin
-			// Update sum. 
-			sum -= oldest;
-			sum += latest;
-		end
-	end
-	assign avg = sum / 4'd7;
+               input logic[11:0] latest,
+               output logic[11:0] avg);
+                    
+    logic [11:0] oldest; // Oldest reading saved in memory. 
+    logic [15:0] sum; // Saved sum across runs; used to calculate average. 
+    logic [2:0] gettingvalues; // Are we still getting readings for the initial sum?
+    
+    // Get oldest reading from memory, write newest reading.
+    ring summem(clk, reset, latest, oldest);
+    
+    always_ff@(posedge clk, posedge reset)
+    begin
+        if(reset)
+        begin
+            sum = 15'd24864; // Leave sensor staring at infinity for about a third of a second before messing with it. 
+            gettingvalues = 0;
+        end
+        else
+        begin
+            if(gettingvalues < 3'd6) gettingvalues++;
+            else
+            begin
+                // Update sum. 
+                sum -= oldest;
+                sum += latest;
+            end
+        end
+    end
+    
+    // Calculate average of seven points. 
+    assign avg = sum / 4'd7;
+
 endmodule
 
-// Giselle Serate
-// gserate@g.hmc.edu
-// 2018.11.24
-// Turns on elements of an LED array according to HC-SR04 distance sensor. 
+// Top level module that turns on elements of an LED array according to HC-SR04 distance sensor. 
 module Lab01(input logic clk,           // 40 MHz clock.
                 input logic echo,          // Echo pin.
                 output logic trig,         // Trigger pin.
@@ -71,11 +82,11 @@ module Lab01(input logic clk,           // 40 MHz clock.
     // Track how long echo has been raised. 
     logic [11:0] accumulateresult;  // Gets the next sensor value.
     logic [11:0] hold;              // Persists the last sensor value.
-	 logic [11:0] clean[14:0]; 			// Save the last 10 values.
-	 logic [11:0] save; 					// Hold actual result.
+     logic [11:0] clean[14:0];          // Save the last 10 values.
+     logic [11:0] save;                     // Hold actual result.
                                     // Assuming a use range of 2 feet, the maximum is 3552 us.
-	
-	integer i; // For loop var. It's a shift reg, so is legit?
+    
+    integer i; // For loop var. It's a shift reg, so is legit?
     
     // Generate us clock.
     always_ff@(posedge clk)
@@ -110,9 +121,9 @@ module Lab01(input logic clk,           // 40 MHz clock.
         if(echo) // Count how long echo is raised. 
             accumulateresult++;
     end
-	 
-	 // Apply moving average filter. 
-	saveavg smoother(trig, reset, hold, save);
+     
+     // Apply moving average filter. 
+    saveavg smoother(trig, reset, hold, save);
         
     // Set LEDs according to latest distance reading. 
     always_comb // Split into intervals of 444. 
@@ -128,4 +139,3 @@ module Lab01(input logic clk,           // 40 MHz clock.
     end
         
 endmodule
-
