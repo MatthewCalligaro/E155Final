@@ -4,7 +4,7 @@
 // Sets LED bars according to the distance read from HC-SR04 ultrasonic sensor. 
 // Applies boxcar average filter. 
 
-// Ring buffer which always writes and reads on clock. 
+// Ring buffer which simultaneously writes and reads after trigger is set high. 
 module ring(input logic clk, reset, trig,
             input logic [11:0] WD,
             output logic [11:0] RD);
@@ -24,19 +24,19 @@ module ring(input logic clk, reset, trig,
             trigHigh <= 0;
         end
         else
-        if(!trigHigh)
-		  begin
-			  if(trig)
-			  begin
-					trigHigh <= 1;
-					// Read and write data; update addresses. 
-					memory[WA] <= WD;
-					RD <= memory[RA];
-					WA <= WA + 1;
-					RA <= RA + 1;
-			  end
-			end
-			else trigHigh = trig;
+        if(!trigHigh) // Waiting for trig to go high. 
+        begin
+            if(trig) // Trig went high. Handle. 
+            begin
+                trigHigh <= 1;
+                // Read and write data; update addresses. 
+                memory[WA] <= WD;
+                RD <= memory[RA];
+                WA <= WA + 1;
+                RA <= RA + 1;
+          end
+        end
+        else trigHigh = trig; // Trig is high; idle until trig is low again. 
     end
 
 endmodule
@@ -59,26 +59,26 @@ module saveavg(input logic clk, reset,
     begin
         if(reset)
         begin
-            sum = 15'd24864; // Leave sensor staring at infinity for about a third of a second before messing with it. 
+            sum = 15'd24864; // Initialize at far distance (no effects). 
             gettingvalues = 0;
             trigHigh = 0;
         end
         else
-        if(!trigHigh) // Waiting for trigger to go high. 
+        if(!trigHigh) // Waiting for trig to go high. 
         begin
-				if(trig) // Trigger went high. Handle. 
-				begin
-					trigHigh = 1;
-					if(gettingvalues < 3'd6) gettingvalues++;
-					else
-					begin
-						// Update sum. 
-						sum -= oldest;
-						sum += latest;
-					end
-				end
+            if(trig) // Trig went high. Handle. 
+            begin
+                trigHigh = 1;
+                if(gettingvalues < 3'd6) gettingvalues++;
+                else
+                begin
+                    // Update sum. 
+                    sum -= oldest;
+                    sum += latest;
+                end
+            end
         end
-		  else trigHigh = trig;
+        else trigHigh = trig; // Trig is high; idle until trig is low again. 
     end
     
     // Calculate average of seven points. 
@@ -88,9 +88,9 @@ endmodule
 
 // Top level module that turns on elements of an LED array according to HC-SR04 distance sensor. 
 module Lab01(input logic clk,           // 40 MHz clock.
-                input logic echo,          // Echo pin.
-                output logic trig,         // Trigger pin.
-                output logic[7:0] led);    // LED bars.
+             input logic echo,          // Echo pin.
+             output logic trig,         // Trigger pin.
+             output logic[7:0] led);    // LED bars.
     // Track clock and state.
     logic [5:0] ucount;     // Counts up to 1 us; reset when you hit 40. 
     logic uclk;             // Has a posedge once every us. 
@@ -99,8 +99,7 @@ module Lab01(input logic clk,           // 40 MHz clock.
     // Track how long echo has been raised. 
     logic [11:0] accumulateresult;  // Gets the next sensor value.
     logic [11:0] hold;              // Persists the last sensor value.
-     logic [11:0] clean[14:0];          // Save the last 10 values.
-     logic [11:0] save;                     // Hold actual result.
+    logic [11:0] save;              // Hold actual result.
                                     // Assuming a use range of 2 feet, the maximum is 3552 us.
     
     // Generate us clock.
