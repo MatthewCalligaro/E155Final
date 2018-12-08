@@ -88,7 +88,6 @@ endmodule
 
 // Top level module that turns on elements of an LED array according to HC-SR04 distance sensor. 
 module Lab01(input logic clk,           // 40 MHz clock.
-				 input logic reset, 
              input logic echo,          // Echo pin.
              output logic trig,         // Trigger pin.
              output logic[7:0] led);    // LED bars.
@@ -105,42 +104,36 @@ module Lab01(input logic clk,           // 40 MHz clock.
     
     // Generate us clock.
 
-    always_ff@(posedge clk, posedge reset)
+    always_ff@(posedge clk)
     begin
-			if(reset)
-			begin
-			  if(ucount == 6'd39) // Reset. 
-					ucount = 0;
-			  else
-					ucount++;
-					
-			  if(ucount % 20 == 0) // Half a us has passed; flip clock. 
-					uclk = !uclk; 
-		  end
+        if(ucount == 6'd39) // Reset. 
+            ucount = 0;
+        else
+            ucount++;
+            
+        if(ucount % 20 == 0) // Half a us has passed; flip clock. 
+            uclk = !uclk; 
     end
         
     // Communicate with sensor. 
-    always_ff@(posedge uclk, posedge reset)
+    always_ff@(posedge uclk)
     begin
-			if(reset)
-			begin
-			  // Also reset on 60 ms (60000 us).
-			  if(counter == 16'd59999)
-			  begin
-				  hold = accumulateresult;
-					counter = 0;
-					accumulateresult = 0;
-					trig = 1; // Raise trig, beginning of cycle. 
-			  end
-			  else
-			  begin
-					if(counter == 16'd19) trig = 0; // Stop triggering; the stated minimum of
-															  // 10 us didn't work, but 20 did.
-					counter++; // Regardless of trigger state, continue counting. 
-					if(echo) // Count how long echo is raised. 
-						 accumulateresult++;
-			  end
-			end
+        // Reset on 60 ms (60000 us).
+        if(counter == 16'd59999)
+        begin
+           hold = accumulateresult;
+            counter = 0;
+            accumulateresult = 0;
+            trig = 1; // Raise trig, beginning of cycle. 
+        end
+        else
+        begin
+            if(counter == 16'd19) trig = 0; // Stop triggering; the stated minimum of
+                                            // 10 us didn't work, but 20 did.
+            counter++; // Regardless of trigger state, continue counting. 
+				if(echo) // Count how long echo is raised. 
+                accumulateresult++;
+        end
 
     end
      
