@@ -5,13 +5,13 @@
 // Applies boxcar average filter. 
 
 // Ring buffer which always writes and reads on clock. 
-module ring(input logic clk, reset,// trig,
+module ring(input logic clk, reset, trig,
             input logic [11:0] WD,
             output logic [11:0] RD);
               
     logic trigHigh; 
-    logic [3:0] WA;
-    logic [3:0] RA;
+    logic [2:0] WA;
+    logic [2:0] RA;
     logic [11:0] memory[14:0];
     
     always_ff@(posedge clk, posedge reset)
@@ -24,22 +24,26 @@ module ring(input logic clk, reset,// trig,
             trigHigh <= 0;
         end
         else
-        //if(trig && !trigHigh)
-        begin
-            trigHigh <= 1;
-            // Read and write data; update addresses. 
-            memory[WA] <= WD;
-            RD <= memory[RA];
-            WA <= WA + 1;
-            RA <= RA + 1;
-        end
+        if(!trigHigh)
+		  begin
+			  if(trig)
+			  begin
+					trigHigh <= 1;
+					// Read and write data; update addresses. 
+					memory[WA] <= WD;
+					RD <= memory[RA];
+					WA <= WA + 1;
+					RA <= RA + 1;
+			  end
+			end
+			else trigHigh = trig;
     end
 
 endmodule
 
 // Average current and last 6 data points. 
 module saveavg(input logic clk, reset,
-//               input logic trig,
+               input logic trig,
                input logic[11:0] latest,
                output logic[11:0] avg);
                     
@@ -47,9 +51,10 @@ module saveavg(input logic clk, reset,
     logic [11:0] oldest; // Oldest reading saved in memory. 
     logic [15:0] sum; // Saved sum across runs; used to calculate average. 
     logic [2:0] gettingvalues; // Are we still getting readings for the initial sum?
+//	 logic blah;
     
     // Get oldest reading from memory, write newest reading.
-    ring summem(clk, reset, latest, oldest);
+    ring summem(clk, reset, trig, latest, oldest);
     
     always_ff@(posedge clk, posedge reset)
     begin
@@ -58,23 +63,31 @@ module saveavg(input logic clk, reset,
             sum = 15'd24864; // Leave sensor staring at infinity for about a third of a second before messing with it. 
             gettingvalues = 0;
             trigHigh = 0;
+//				blah = 1;
         end
         else
-//        if(trig && !trigHigh) // Detect positive edges of the trigger signal. 
+        if(!trigHigh) // Waiting for trigger to go high. 
         begin
-            trigHigh = 1;
-            if(gettingvalues < 3'd6) gettingvalues++;
-            else
-            begin
-                // Update sum. 
-                sum -= oldest;
-                sum += latest;
-            end
+				if(trig) // Trigger went high. Handle. 
+				begin
+					trigHigh = 1;
+					if(gettingvalues < 3'd6) gettingvalues++;
+					else
+					begin
+//						blah = 0;
+						// Update sum. 
+						sum -= oldest;
+						sum += latest;
+					end
+				end
         end
+		  else trigHigh = trig;
     end
     
     // Calculate average of seven points. 
-    assign avg = sum / 4'd7;
+    assign avg = sum / 4'd7; // TODO
+//	assign avg = trigHigh;
+//		assign avg = blah; // TODO
 
 endmodule
 
@@ -132,7 +145,7 @@ module Lab01(input logic clk,           // 40 MHz clock.
     end
      
      // Apply moving average filter. 
-    saveavg smoother(trig, reset, hold, save);
+    saveavg smoother(clk, reset, trig, hold, save);
         
     // Set LEDs according to latest distance reading. 
     always_comb // Split into intervals of 444. 
