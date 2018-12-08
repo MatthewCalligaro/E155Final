@@ -3,11 +3,12 @@
 // 2018.11.30
 // Returns intensity from distance sensor. 
 
-// Ring buffer which always writes and reads on clock. 
-module ring(input logic clk, reset,
+// Ring buffer which simultaneously writes and reads after trigger is set high. 
+module ring(input logic clk, reset, trig,
             input logic [11:0] WD,
             output logic [11:0] RD);
               
+    logic trigHigh; // If we expect trig to currently be high or not. 
     logic [2:0] WA;
     logic [2:0] RA;
     logic [11:0] memory[14:0];
@@ -19,54 +20,72 @@ module ring(input logic clk, reset,
             // Initialize read pointer one ahead of write pointer. 
             WA <= 4'd7;
             RA <= 0;
+            trigHigh <= 0;
         end
         else
+        if(!trigHigh) // Waiting for trig to go high. 
         begin
-            // Read and write data; update addresses. 
-            memory[WA] <= WD;
-            RD <= memory[RA];
-            WA <= WA + 1;
-            RA <= RA + 1;
+            if(trig) // Trig went high. Handle. 
+            begin
+                trigHigh <= 1;
+                // Read and write data; update addresses. 
+                memory[WA] <= WD;
+                RD <= memory[RA];
+                WA <= WA + 1;
+                RA <= RA + 1;
+          end
         end
+        else trigHigh = trig; // Trig is high; idle until trig is low again. 
     end
 
 endmodule
 
+
 // Average current and last 6 data points. 
 module saveavg(input logic clk, reset,
+               input logic trig,
                input logic[11:0] latest,
                output logic[11:0] avg);
                     
+    logic trigHigh; // If we expect trig to currently be high or not. 
     logic [11:0] oldest; // Oldest reading saved in memory. 
     logic [15:0] sum; // Saved sum across runs; used to calculate average. 
     logic [2:0] gettingvalues; // Are we still getting readings for the initial sum?
     
     // Get oldest reading from memory, write newest reading.
-    ring summem(clk, reset, latest, oldest);
+    ring summem(clk, reset, trig, latest, oldest);
     
     always_ff@(posedge clk, posedge reset)
     begin
         if(reset)
         begin
-            sum = 15'd24864; // Leave sensor staring at infinity for about a third of a second before messing with it. 
+            sum = 15'd24864; // Initialize at far distance (no effects). 
             gettingvalues = 0;
+            trigHigh = 0;
         end
         else
+        if(!trigHigh) // Waiting for trig to go high. 
         begin
-            if(gettingvalues < 3'd6) gettingvalues++;
-            else
+            if(trig) // Trig went high. Handle. 
             begin
-                // Update sum. 
-                sum -= oldest;
-                sum += latest;
+                trigHigh = 1;
+                if(gettingvalues < 3'd6) gettingvalues++;
+                else
+                begin
+                    // Update sum. 
+                    sum -= oldest;
+                    sum += latest;
+                end
             end
         end
+        else trigHigh = trig; // Trig is high; idle until trig is low again. 
     end
     
     // Calculate average of seven points. 
-    assign avg = sum / 4'd7;
+    assign avg = sum / 4'd7; 
 
 endmodule
+
 
 // Return intensity level according to HC-SR04 distance sensor. 
 module distance(input logic clk,                // 40 MHz clock.

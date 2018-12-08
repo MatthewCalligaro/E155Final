@@ -88,6 +88,7 @@ endmodule
 
 // Top level module that turns on elements of an LED array according to HC-SR04 distance sensor. 
 module Lab01(input logic clk,           // 40 MHz clock.
+             input logic reset,         // Hardware reset. 
              input logic echo,          // Echo pin.
              output logic trig,         // Trigger pin.
              output logic[7:0] led);    // LED bars.
@@ -103,22 +104,28 @@ module Lab01(input logic clk,           // 40 MHz clock.
                                     // Assuming a use range of 2 feet, the maximum is 3552 us.
     
     // Generate us clock.
-    always_ff@(posedge clk)
+    always_ff@(posedge clk, posedge reset)
     begin
-        if(ucount == 6'd39) // Reset. 
+        if(reset) // Reset.
+            ucount = 0;
+        else if(ucount == 6'd39) // Also reset. 
             ucount = 0;
         else
             ucount++;
-            
-        if(ucount % 20 == 0) // Half a us has passed; flip clock. 
-            uclk = !uclk; 
+            if(ucount % 20 == 0) // Half a us has passed; flip clock. 
+                uclk = !uclk; 
     end
         
     // Communicate with sensor. 
-    always_ff@(posedge uclk)
+    always_ff@(posedge uclk, posedge reset)
     begin
-        // Reset on 60 ms (60000 us).
-        if(counter == 16'd59999)
+        if(reset) // Reset. 
+        begin
+            hold = accumulateresult;
+            counter = 0;
+            accumulateresult = 0;
+            trig = 1; // Raise trig, beginning of cycle. 
+        else if(counter == 16'd59999) // Also reset on 60 ms (60000 us).
         begin
            hold = accumulateresult;
             counter = 0;
