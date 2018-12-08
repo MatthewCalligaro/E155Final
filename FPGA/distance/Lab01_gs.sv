@@ -34,7 +34,7 @@ module ring(input logic clk, reset, trig,
                 RD <= memory[RA];
                 WA <= WA + 1;
                 RA <= RA + 1;
-          end
+            end
         end
         else trigHigh = trig; // Trig is high; idle until trig is low again. 
     end
@@ -69,12 +69,12 @@ module saveavg(input logic clk, reset,
             if(trig) // Trig went high. Handle. 
             begin
                 trigHigh = 1;
-                if(gettingvalues <= 3'd6) // TODO Ahhh . . . . 
-                     begin
-                         gettingvalues++;
-                          sum -= 12'd3552;
-                          sum += latest;
-                     end
+                if(gettingvalues <= 3'd6) 
+                begin
+                    gettingvalues++;
+                    sum -= 12'd3552;
+                    sum += latest;
+                end
                 else
                 begin
                     // Update sum. 
@@ -111,18 +111,18 @@ module Lab01(input logic clk,           // 40 MHz clock.
     // Generate us clock.
     always_ff@(posedge clk, posedge reset)
     begin
-            if(reset) // Reset. 
+        if(reset) // Reset. 
+            ucount = 0;
+        else
+        begin
+            if(ucount == 6'd39) // Reset. 
                 ucount = 0;
             else
-            begin
-              if(ucount == 6'd39) // Reset. 
-                    ucount = 0;
-              else
-                    ucount++;
-                    
-              if(ucount % 20 == 0) // Half a us has passed; flip clock. 
-                    uclk = !uclk; 
-            end
+                ucount++;
+                
+            if(ucount % 20 == 0) // Half a us has passed; flip clock. 
+                uclk = !uclk; 
+        end
     end
         
     // Communicate with sensor. 
