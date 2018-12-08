@@ -104,11 +104,12 @@ module Lab01(input logic clk,           // 40 MHz clock.
                                     // Assuming a use range of 2 feet, the maximum is 3552 us.
     
     // Generate us clock.
-    always_ff@(posedge clk, posedge reset)
+    always_ff@(posedge clk)//, posedge reset)
     begin
-        if(reset) // Reset.
-            ucount = 0;
-        else if(ucount == 6'd39) // Also reset. 
+//        if(reset) // Reset.
+//            ucount = 0;
+//        else 
+		  if(ucount == 6'd39) // Also reset. 
             ucount = 0;
         else
 		  begin
@@ -119,16 +120,17 @@ module Lab01(input logic clk,           // 40 MHz clock.
     end
         
     // Communicate with sensor. 
-    always_ff@(posedge uclk, posedge reset)
+    always_ff@(posedge uclk)//, posedge reset)
     begin
-        if(reset) // Reset. 
-        begin
-            hold = accumulateresult;
-            counter = 0;
-            accumulateresult = 0;
-            trig = 1; // Raise trig, beginning of cycle. 
-        end
-        else if(counter == 16'd59999) // Also reset on 60 ms (60000 us).
+//        if(reset) // Reset. 
+//        begin
+//            hold = accumulateresult;
+//            counter = 0;
+//            accumulateresult = 0;
+//            trig = 1; // Raise trig, beginning of cycle. 
+//        end
+//        else 
+		  if(counter == 16'd59999) // Also reset on 60 ms (60000 us).
         begin
            hold = accumulateresult;
             counter = 0;
