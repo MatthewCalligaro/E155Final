@@ -110,36 +110,51 @@ module Lab01(input logic clk,           // 40 MHz clock.
     
     // Generate us clock.
 
-    always_ff@(posedge clk)
+    always_ff@(posedge clk, posedge reset)
     begin
-        if(ucount == 6'd39) // Reset. 
-            ucount = 0;
-        else
-            ucount++;
-            
-        if(ucount % 20 == 0) // Half a us has passed; flip clock. 
-            uclk = !uclk; 
+			if(reset) // Reset. 
+				ucount = 0;
+			else
+			begin
+			  if(ucount == 6'd39) // Reset. 
+					ucount = 0;
+			  else
+					ucount++;
+					
+			  if(ucount % 20 == 0) // Half a us has passed; flip clock. 
+					uclk = !uclk; 
+			end
     end
         
     // Communicate with sensor. 
-    always_ff@(posedge uclk)
+    always_ff@(posedge uclk, posedge reset)
     begin
-        // Reset on 60 ms (60000 us).
-        if(counter == 16'd59999)
-        begin
+			if(reset)
+			begin
            hold = accumulateresult;
             counter = 0;
             accumulateresult = 0;
             trig = 1; // Raise trig, beginning of cycle. 
-        end
-        else
-        begin
-            if(counter == 16'd19) trig = 0; // Stop triggering; the stated minimum of
-                                            // 10 us didn't work, but 20 did.
-            counter++; // Regardless of trigger state, continue counting. 
-				if(echo) // Count how long echo is raised. 
-                accumulateresult++;
-        end
+	     end
+			else
+			begin
+			  // Reset on 60 ms (60000 us).
+			  if(counter == 16'd59999)
+			  begin
+				  hold = accumulateresult;
+					counter = 0;
+					accumulateresult = 0;
+					trig = 1; // Raise trig, beginning of cycle. 
+			  end
+			  else
+			  begin
+					if(counter == 16'd19) trig = 0; // Stop triggering; the stated minimum of
+															  // 10 us didn't work, but 20 did.
+					counter++; // Regardless of trigger state, continue counting. 
+					if(echo) // Count how long echo is raised. 
+						 accumulateresult++;
+			  end
+		 end
 
     end
      
