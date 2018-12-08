@@ -117,7 +117,7 @@ module Lab01(input logic clk,           // 40 MHz clock.
         begin
            hold = accumulateresult;
             counter = 0;
-            accumulate = 0;
+            accumulateresult = 0;
             trig = 1; // Raise trig, beginning of cycle. 
         end
         else
