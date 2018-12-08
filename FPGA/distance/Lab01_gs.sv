@@ -9,7 +9,7 @@ module ring(input logic clk, reset, trig,
             input logic [11:0] WD,
             output logic [11:0] RD);
               
-    logic trigHigh; 
+    logic trigHigh; // If we expect trig to currently be high or not. 
     logic [2:0] WA;
     logic [2:0] RA;
     logic [11:0] memory[14:0];
