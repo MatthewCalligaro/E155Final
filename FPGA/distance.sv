@@ -17,7 +17,7 @@ module ring(input logic clk, reset,
         if(reset) 
         begin 
             // Initialize read pointer one ahead of write pointer. 
-            WA <= 4'd7;
+            WA <= 3'd7;
             RA <= 0;
         end
         else
@@ -25,8 +25,8 @@ module ring(input logic clk, reset,
             // Read and write data; update addresses. 
             memory[WA] <= WD;
             RD <= memory[RA];
-            WA <= WA + 1;
-            RA <= RA + 1;
+            WA <= WA + 1'b1;
+            RA <= RA + 1'b1;
         end
     end
 
@@ -37,7 +37,7 @@ endmodule
 module saveavg(input logic clk, reset,
                input logic trig,
                input logic[11:0] latest,
-               output logic[11:0] avg);
+               output logic[15:0] avg);
                     
     logic trigHigh; // If we expect trig to currently be high or not. 
     logic [11:0] oldest; // Oldest reading saved in memory. 
@@ -79,7 +79,7 @@ module saveavg(input logic clk, reset,
     end
     
     // Calculate average of seven points. 
-    assign avg = sum / 4'd7; 
+    assign avg = sum / 3'd7; 
 
 endmodule
 
@@ -96,7 +96,8 @@ module distance(input logic clk,                // 40 MHz clock.
     logic uclk; // Has a posedge once every us. 
     logic [15:0] counter; // Counts up once every us; proxy for state. 
     logic [11:0] accumulateresult;  // Keeps track of how long echo has been raised. 
-    logic [11:0] saveresult;        // save persists the last value while accumulate gets the next value. 
+    logic [11:0] hold;              // Persists the last sensor value.
+    logic [15:0] save;              // save persists the last value while accumulate gets the next value. 
                                     // If we assume a use range of 2 feet, we get 3552 us as our max. 
     
     // Generate us clock.
