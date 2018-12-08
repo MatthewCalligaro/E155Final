@@ -51,7 +51,6 @@ module saveavg(input logic clk, reset,
     logic [11:0] oldest; // Oldest reading saved in memory. 
     logic [15:0] sum; // Saved sum across runs; used to calculate average. 
     logic [2:0] gettingvalues; // Are we still getting readings for the initial sum?
-//	 logic blah;
     
     // Get oldest reading from memory, write newest reading.
     ring summem(clk, reset, trig, latest, oldest);
@@ -63,7 +62,6 @@ module saveavg(input logic clk, reset,
             sum = 15'd24864; // Leave sensor staring at infinity for about a third of a second before messing with it. 
             gettingvalues = 0;
             trigHigh = 0;
-//				blah = 1;
         end
         else
         if(!trigHigh) // Waiting for trigger to go high. 
@@ -74,7 +72,6 @@ module saveavg(input logic clk, reset,
 					if(gettingvalues < 3'd6) gettingvalues++;
 					else
 					begin
-//						blah = 0;
 						// Update sum. 
 						sum -= oldest;
 						sum += latest;
@@ -85,9 +82,7 @@ module saveavg(input logic clk, reset,
     end
     
     // Calculate average of seven points. 
-    assign avg = sum / 4'd7; // TODO
-//	assign avg = trigHigh;
-//		assign avg = blah; // TODO
+    assign avg = sum / 4'd7; 
 
 endmodule
 
@@ -107,8 +102,6 @@ module Lab01(input logic clk,           // 40 MHz clock.
      logic [11:0] clean[14:0];          // Save the last 10 values.
      logic [11:0] save;                     // Hold actual result.
                                     // Assuming a use range of 2 feet, the maximum is 3552 us.
-    
-    integer i; // For loop var. It's a shift reg, so is legit?
     
     // Generate us clock.
     always_ff@(posedge clk)
