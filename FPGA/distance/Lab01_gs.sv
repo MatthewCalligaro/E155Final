@@ -69,7 +69,12 @@ module saveavg(input logic clk, reset,
             if(trig) // Trig went high. Handle. 
             begin
                 trigHigh = 1;
-                if(gettingvalues < 3'd6) gettingvalues++;
+                if(gettingvalues <= 3'd6) // TODO Ahhh . . . . 
+					 begin
+					     gettingvalues++;
+						  sum -= 12'd3552;
+						  sum += latest;
+					 end
                 else
                 begin
                     // Update sum. 
@@ -88,6 +93,7 @@ endmodule
 
 // Top level module that turns on elements of an LED array according to HC-SR04 distance sensor. 
 module Lab01(input logic clk,           // 40 MHz clock.
+				 input logic reset,
              input logic echo,          // Echo pin.
              output logic trig,         // Trigger pin.
              output logic[7:0] led);    // LED bars.
