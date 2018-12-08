@@ -4,10 +4,11 @@
 // Returns intensity from distance sensor. 
 
 // Ring buffer which always writes and reads on clock. 
-module ring(input logic clk, reset,
+module ring(input logic clk, reset, trig,
             input logic [11:0] WD,
             output logic [11:0] RD);
               
+    logic trigHigh; 
     logic [2:0] WA;
     logic [2:0] RA;
     logic [11:0] memory[14:0];
@@ -19,9 +20,12 @@ module ring(input logic clk, reset,
             // Initialize read pointer one ahead of write pointer. 
             WA <= 4'd7;
             RA <= 0;
+            trigHigh <= 0;
         end
         else
+        if(trig && !trigHigh)
         begin
+            trigHigh <= 1;
             // Read and write data; update addresses. 
             memory[WA] <= WD;
             RD <= memory[RA];
@@ -34,15 +38,17 @@ endmodule
 
 // Average current and last 6 data points. 
 module saveavg(input logic clk, reset,
+               input logic trig,
                input logic[11:0] latest,
                output logic[11:0] avg);
                     
+    logic trigHigh; // If we expect trig to currently be high or not. 
     logic [11:0] oldest; // Oldest reading saved in memory. 
     logic [15:0] sum; // Saved sum across runs; used to calculate average. 
     logic [2:0] gettingvalues; // Are we still getting readings for the initial sum?
     
     // Get oldest reading from memory, write newest reading.
-    ring summem(clk, reset, latest, oldest);
+    ring summem(clk, reset, trig, latest, oldest);
     
     always_ff@(posedge clk, posedge reset)
     begin
@@ -50,9 +56,12 @@ module saveavg(input logic clk, reset,
         begin
             sum = 15'd24864; // Leave sensor staring at infinity for about a third of a second before messing with it. 
             gettingvalues = 0;
+            trigHigh = 0;
         end
         else
+        if(trig && !trigHigh) // Detect positive edges of the trigger signal. 
         begin
+            trigHigh = 1;
             if(gettingvalues < 3'd6) gettingvalues++;
             else
             begin
@@ -125,7 +134,7 @@ module Lab01(input logic clk,                // 40 MHz clock.
     end
         
     // Apply moving average filter. 
-    saveavg smoother(trig, reset, hold, save);
+    saveavg smoother(uclk, reset, trig, hold, save);
 
     always_comb // Evenly split 3552us into intervals of 444. 
     begin
