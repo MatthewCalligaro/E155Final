@@ -41,20 +41,17 @@ module ring(input logic clk, reset, trig,
 endmodule
 
 
-// Average current and last 6 data points. 
-module saveavg(input logic clk, reset,
-               input logic trig,
-               input logic[11:0] latest,
-               output logic[15:0] avg);
-                    
+// Calculate average of current and last 6 data points. 
+// Keeps running sum, adding latest and subtracting oldest to obtain updated sum. 
+module averager(input logic clk, reset,
+                input logic trig, 
+                input logic[11:0] latest, oldest,
+                output logic[15:0] avg);
+
     logic trigHigh; // If we expect trig to currently be high or not. 
-    logic [11:0] oldest; // Oldest reading saved in memory. 
     logic [15:0] sum; // Saved sum across runs; used to calculate average. 
     logic [2:0] gettingvalues; // Are we still getting readings for the initial sum?
-    
-    // Get oldest reading from memory, write newest reading.
-    ring summem(clk, reset, trig, latest, oldest);
-    
+
     always_ff@(posedge clk, posedge reset)
     begin
         if(reset)
@@ -88,7 +85,20 @@ module saveavg(input logic clk, reset,
     
     // Calculate average of seven points. 
     assign avg = sum / 3'h7; 
+endmodule 
 
+
+// Average current and last 6 data points. 
+module saveavg(input logic clk, reset,
+               input logic trig,
+               input logic[11:0] latest,
+               output logic[15:0] avg);
+                    
+    logic [11:0] oldest; // Oldest reading saved in memory. 
+    
+    // Get oldest reading from memory, write newest reading.
+    ring summem(clk, reset, trig, latest, oldest);
+    averager calcavg(clk, reset, trig, latest, oldest, avg);
 endmodule
 
 
