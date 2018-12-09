@@ -51,6 +51,7 @@ module averager(input logic clk, reset,
     logic trigHigh; // If we expect trig to currently be high or not. 
     logic [15:0] sum; // Saved sum across runs; used to calculate average. 
     logic [2:0] gettingvalues; // Are we still getting readings for the initial sum?
+    logic [15:0] result; // Intermediate to extract lowest bits for average. 
 
     always_ff@(posedge clk, posedge reset)
     begin
@@ -84,7 +85,8 @@ module averager(input logic clk, reset,
     end
     
     // Calculate average of eight points. 
-    assign avg = (sum + oldest) >> 2'h3; 
+    assign result = (sum + oldest) >> 2'h3; 
+    assign avg = result[11:0]; // Truncate result. 
 endmodule 
 
 
