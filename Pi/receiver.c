@@ -5,6 +5,8 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <sys/types.h>
+#include <ifaddrs.h>
 #include "EasyPIO.h"
 
 ////////////////////////////////
@@ -129,7 +131,9 @@ void saveRecording(short* buffer, size_t bufferSize)
 /**
  * \brief Load .wav from website into buffer
  *
- * \param buffer        array with which to load audio samples
+ * \param buffer        array into which audio samples are loaded
+ * 
+ * \returns number of samples loaded into buffer 
  */
 size_t loadRecording(short* buffer)
 {
@@ -162,11 +166,31 @@ void flashLED(int numFlashes)
 }
 
 /**
+ * \brief Gets the IP address of the microcontroller
+ * 
+ * \returns IP address in human-readable format
+ */
+char* getIPAddress()
+{
+    struct ifaddrs* addr;
+
+    // If we cannot extract the IP address, return a default value
+    if (getifaddrs(&ifaddr) == -1)
+    {
+        printf("Warning: failed to calculate IP address\n");
+        return "<IP address>";
+    }
+
+    printf("%ux\n", addr.ifa_addr.in_addr.saddr);
+}
+
+/**
  * \brief Entry point for program
  */
 int main()
 {
     init();
+
 
     // GPIO variables
     int recording = digitalRead(PIN_RECORD);
@@ -186,6 +210,7 @@ int main()
     // Recording variables
     size_t recordIndex = loadRecording(buffer);
     size_t playIndex = 0;
+    char
 
     // SPI variables
     int curNCS = digitalRead(NCS);

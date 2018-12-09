@@ -21,8 +21,9 @@ module effects(input logic reset, clk,
     logic [15:0] sampleExt;     // sampleVoltage extended to 15 bits
     logic [15:0] offsetExt;     // offset extended to 15 bits 
     logic [15:0] offsetVoltage; // voltage after removing offset (2's comp)
-    logic [15:0] sumVoltageAbs; // absolute value of sumVoltage (2's comp)
-    logic [15:0] overdriven;    // signal with overdrive affect applied if on (2's comp)
+    logic [15:0] sumVoltageAbs; // absolute value of sumVoltage (unsigned)
+    logic [15:0] overdriven;    // signal with overdrive affect applied if on (unsigned)
+    logic [15:0] threshold;     // value at which to saturate (unsigned)
     logic [9:0] saturated;      // saturated signal (unsigned)
     logic [9:0] sendVoltageMag; // magnitude of sendVoltage (unsigned)
 
@@ -41,17 +42,18 @@ module effects(input logic reset, clk,
                 10'h1: begin        // add digital delay signal
                     if (switch[1])  sumVoltage <= (readVoltage[10] ? 
                         (sumVoltage - readVoltage[9:0]) : (sumVoltage + readVoltage[9:0]));
-                    address <= writeAdr - (switch[4] ? intensity << 8 : 13'h200);
+                    address <= writeAdr - (switch[4] ? (intensity + 1'b1) << 8 : 13'h200);
                 end 
                 10'h2: begin        // add chorus 1 signal
                     if (switch[2])  sumVoltage <= (readVoltage[10] ? 
                         (sumVoltage - readVoltage[9:1]) : (sumVoltage + readVoltage[9:1]));
-                    address <= writeAdr - (switch[4] ? intensity << 8 + intensity << 7 : 13'h300);
+                    address <= writeAdr - (switch[4] ? 
+                        ((intensity + 1'b1) << 8) + ((intensity + 1'b1) << 7) : 13'h300);
                 end
                 10'h3: begin        // add chorus 2 signal
                     if (switch[2])  sumVoltage <= (readVoltage[10] ? 
                         (sumVoltage - readVoltage[9:1]) : (sumVoltage + readVoltage[9:1]));
-                    address <= writeAdr - (switch[4] ? intensity << 9 : 13'h400);
+                    address <= writeAdr - (switch[4] ? (intensity + 1'b1) << 9 : 13'h400);
                 end
                 10'h4: begin        // add chorus 3 signal
                     if (switch[2])  sumVoltage <= (readVoltage[10] ? 
@@ -62,35 +64,46 @@ module effects(input logic reset, clk,
         end
     end
 
-    // Magnitude of preproVoltage extended to 15 bits
-    assign sampleExt = sampleVoltage;
-    assign offsetExt = offset;
+    always_comb begin
+        // Magnitude of preproVoltage extended to 15 bits
+        sampleExt = sampleVoltage;
+        offsetExt = offset;
 
-    // Remove offset from sample voltage and add a small additional offset to reduce noise
-    assign offsetVoltage = sampleExt - offsetExt + 4'hF;
+        // Remove offset from sample voltage and add a small additional offset to reduce noise
+        offsetVoltage = sampleExt - offsetExt + 4'hF;
 
-    // Absolute value of sumVoltage
-    assign sumVoltageAbs = sumVoltage[15] ? -sumVoltage : sumVoltage; 
+        // Absolute value of sumVoltage
+        if (sumVoltage[15])     sumVoltageAbs = -sumVoltage;
+        else                    sumVoltageAbs = sumVoltage;
 
-    // Apply overdrive if on by amplifying voltage above a certain threshold
-    assign overdriven = (switch[0] && sumVoltageAbs > 8'h1F) ? 
-        (switch[4] ? (sumVoltageAbs << intensity[3:1]) : (sumVoltageAbs << 2)) : sumVoltageAbs;
+        // Apply overdrive if on by amplifying voltage above a certain threshold
+        if (switch[0] && sumVoltageAbs > 8'h1F)
+            if (switch[4])  overdriven = sumVoltageAbs << intensity;
+            else            overdriven = sumVoltageAbs << 2;
+        else                overdriven = sumVoltageAbs;
 
-    // Saturate signal (using a lower threshold if overdrive is on)
-    assign saturated = switch[0] ?
-        (overdriven > 16'hFF ? 10'hFF : overdriven[9:0]) :
-        (overdriven > 16'h3FF ? 10'h3FF : overdriven[9:0]);
+        // Calculate threshold of saturation (lower if overdriven)
+        if (switch[0])
+            if (switch[4])  threshold = (intensity << 6) - 1'b1 + 16'h7F;
+            else            threshold = 16'hFF;
+        else                threshold = 16'h3FF;
+        
+        // Saturate signal
+        if (overdriven > threshold)     saturated = threshold[9:0];
+        else                            saturated = overdriven[9:0];
 
-    // Apply solo effect if on by filtering voltages below a threshold and inverting
-    assign sendVoltageMag = switch[3] ?
-        ((saturated < 4'hC || (switch[4] && repCounter[15] && intensity > 4'h2)) ? 
-            1'b0 : ((-saturated) >> 1)) : 
-        saturated;
+        // Apply solo effect if on by filtering voltages below a threshold and inverting
+        if (switch[3])
+            if (saturated < 4'hF || (switch[4] && repCounter[15] && intensity > 4'h1))  
+                    sendVoltageMag = 1'b0;
+            else    sendVoltageMag = (-saturated) >> 1;
+        else        sendVoltageMag = saturated;
 
-    // Construct sendVoltage as a sign-magnitude representation
-    assign sendVoltage = {sumVoltage[15], sendVoltageMag};
+        // Construct sendVoltage as a sign-magnitude representation
+        sendVoltage = {sumVoltage[15], sendVoltageMag};
 
-    // Convert offsetVoltage to sign-magnitude to store in RAM
-    assign writeVoltage = offsetVoltage[15] ?
-        {1'b1, -offsetVoltage[9:0]} : {1'b0, offsetVoltage[9:0]};
+        // Convert offsetVoltage to sign-magnitude to store in RAM
+        if(offsetVoltage[15])   writeVoltage = {1'b1, -offsetVoltage[9:0]};
+        else                    writeVoltage = {1'b0, offsetVoltage[9:0]};
+    end
 endmodule

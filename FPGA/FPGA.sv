@@ -43,9 +43,9 @@ module FPGA(input logic clk, reset,
         else        counter <= (counter == 10'd832) ? 1'b0 : counter + 1'b1;
 
     // Assign wires
-    assign WE = counter == 10'd832;         // store writeVoltage on last clk of each cycle
-    assign sclkAdc = counter[3];            // ADC's sclk = 2.5 MHz (16 clks)
-    assign sclkPi = counter[5];             // Pi's sclk  = 625 KHz (64 clks)
-    //assign led = sendVoltage[9:2];          // LEDs display sendVoltage magnitude
-    assign led = {4'b0, intensity};
+    assign WE = counter == 10'd832;             // store writeVoltage on last clk of each cycle
+    assign sclkAdc = counter[3];                // ADC's sclk = 2.5 MHz (16 clks)
+    assign sclkPi = counter[5];                 // Pi's sclk  = 625 KHz (64 clks)
+    assign led = switch[4] ?                    // LEDs display distance sensor if it is on
+        {4'b0, intensity} : sendVoltage[9:2];   // otherwise, they display sendVoltage 
 endmodule
