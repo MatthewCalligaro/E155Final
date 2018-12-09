@@ -116,8 +116,7 @@ module distsensor(input logic clk, reset,
     logic [11:0] accumulateresult;  // Keeps track of how long echo has been raised. 
     
     // Generate slower clock.
-    always_ff@(posedge clk, posedge reset)
-    begin
+    always_ff@(posedge clk, posedge reset) begin
         if(reset) // Reset. 
             clkcounter = 1'b0;
         else
@@ -127,27 +126,20 @@ module distsensor(input logic clk, reset,
     assign slowclk = clkcounter[4]; // 1.25 MHz
         
     // Communicate with sensor. 
-    always_ff@(posedge slowclk, posedge reset)
-    begin
-        if(reset)
-        begin
+    always_ff@(posedge slowclk, posedge reset) begin
+        if(reset) begin
             hold = accumulateresult;
             counter = 1'b0;
             accumulateresult = 1'b0;
             trig = 1'b1; // Raise trig, beginning of cycle. 
-        end
-        else
-        begin
+        end else begin
             // Reset on 60 ms (60000 us).
-            if(counter == 16'hbb80) // ea5f
-            begin
+            if(counter == 16'hbb80) begin
                 hold = accumulateresult;
                 counter = 1'b0;
                 accumulateresult = 1'b0;
                 trig = 1'b1; // Raise trig, beginning of cycle. 
-            end
-            else
-            begin
+            end else begin
                 if(counter == 16'h10) trig = 1'b0; // Stop triggering. 
                 counter++; // Regardless of trigger state, continue counting. 
                 if(echo) // Count how long echo is raised. 
