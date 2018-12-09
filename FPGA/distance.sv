@@ -102,21 +102,16 @@ module saveavg(input logic clk, reset,
 endmodule
 
 
-// Return intensity level according to HC-SR04 distance sensor. 
-module distance(input logic clk,                // 40 MHz clock.
-                input logic reset,              // Hardware reset. 
-                input logic echo,               // Echo pin.
-                output logic trig,              // Trigger pin.
-                output logic[3:0] intensity);   // Intensity level--higher meaning closer.
-    
+// Communicate with distance sensor and output a measurement.
+module distsensor(input logic clk, reset, 
+                  input logic echo,
+                  output logic trig,
+                  output logic[11:0] hold); // Persists the last sensor value.
     // Track clock and state.
     logic [5:0] ucount; // Counts up to 1 us; reset when you hit 40. 
     logic uclk; // Has a posedge once every us. 
     logic [15:0] counter; // Counts up once every us; proxy for state. 
     logic [11:0] accumulateresult;  // Keeps track of how long echo has been raised. 
-    logic [11:0] hold;              // Persists the last sensor value.
-    logic [15:0] save;              // save persists the last value while accumulate gets the next value. 
-                                    // If we assume a use range of 2 feet, we get 3552 us as our max. 
     
     // Generate us clock.
     always_ff@(posedge clk, posedge reset)
@@ -164,12 +159,13 @@ module distance(input logic clk,                // 40 MHz clock.
                     accumulateresult++;
             end
         end
-
     end
-     
-     // Apply moving average filter. 
-    saveavg smoother(clk, reset, trig, hold, save);
+endmodule
 
+
+// Translate saved measurement to an intensity. // TODO is this ridiculous?
+module intensity(input logic[15:0] save,
+                 output logic[3:0] intensity);
     always_comb // Evenly split 3552us into intervals of 444. 
     begin
         if(save > 12'hde0)           intensity = 4'h0; // Farthest; least intense. 
@@ -183,5 +179,25 @@ module distance(input logic clk,                // 40 MHz clock.
         else if(save > 1'b0)         intensity = 4'h8; // Closest; most intense.
         else                         intensity = 4'h0; // If we see a value that we don't know how to handle, read a 0. 
     end
+endmodule
+
+
+// Return intensity level according to HC-SR04 distance sensor. 
+module distance(input logic clk,                // 40 MHz clock.
+                input logic reset,              // Hardware reset. 
+                input logic echo,               // Echo pin.
+                output logic trig,              // Trigger pin.
+                output logic[3:0] intensity);   // Intensity level--higher meaning closer.
+    
+    logic [11:0] hold;              // hold persists the latest measurement. 
+    logic [15:0] save;              // save persists the averaged value. 
+
+    // Get distance. 
+    distsensor getdistance(clk, reset, echo, trig, hold);
+
+    // Apply moving average filter. 
+    saveavg smoother(clk, reset, trig, hold, save);
+
+    intensity getintensity(save, intensity);
     
 endmodule
