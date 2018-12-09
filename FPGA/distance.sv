@@ -3,11 +3,12 @@
 // 2018.11.30
 // Returns intensity from distance sensor. 
 
-// Ring buffer which always writes and reads on clock. 
-module ring(input logic clk, reset,
+// Ring buffer which simultaneously writes and reads after trigger is set high. 
+module ring(input logic clk, reset, trig,
             input logic [11:0] WD,
             output logic [11:0] RD);
               
+    logic trigHigh; // If we expect trig to currently be high or not. 
     logic [2:0] WA;
     logic [2:0] RA;
     logic [11:0] memory[14:0];
@@ -17,17 +18,24 @@ module ring(input logic clk, reset,
         if(reset) 
         begin 
             // Initialize read pointer one ahead of write pointer. 
-            WA <= 3'd7;
-            RA <= 0;
+            WA <= 3'h7;
+            RA <= 1'b0;
+            trigHigh <= 1'b0;
         end
         else
+        if(!trigHigh) // Waiting for trig to go high. 
         begin
-            // Read and write data; update addresses. 
-            memory[WA] <= WD;
-            RD <= memory[RA];
-            WA <= WA + 1'b1;
-            RA <= RA + 1'b1;
+            if(trig) // Trig went high. Handle. 
+            begin
+                trigHigh <= 1'b1;
+                // Read and write data; update addresses. 
+                memory[WA] <= WD;
+                RD <= memory[RA];
+                WA <= WA + 1'b1;
+                RA <= RA + 1'b1;
+            end
         end
+        else trigHigh = trig; // Trig is high; idle until trig is low again. 
     end
 
 endmodule
@@ -52,16 +60,16 @@ module saveavg(input logic clk, reset,
         if(reset)
         begin
             sum = 15'd24864; // Initialize at far distance (no effects). 
-            gettingvalues = 0;
-            trigHigh = 0;
+            gettingvalues = 1'b0;
+            trigHigh = 1'b0;
         end
         else
         if(!trigHigh) // Waiting for trig to go high. 
         begin
             if(trig) // Trig went high. Handle. 
             begin
-                trigHigh = 1;
-                if(gettingvalues <= 3'd6) 
+                trigHigh = 1'b1;
+                if(gettingvalues <= 3'h6) 
                 begin
                     gettingvalues++;
                     sum -= 12'd3552;
@@ -79,7 +87,7 @@ module saveavg(input logic clk, reset,
     end
     
     // Calculate average of seven points. 
-    assign avg = sum / 3'd7; 
+    assign avg = sum / 3'h7; 
 
 endmodule
 
@@ -104,15 +112,15 @@ module distance(input logic clk,                // 40 MHz clock.
     always_ff@(posedge clk, posedge reset)
     begin
         if(reset) // Reset. 
-            ucount = 0;
+            ucount = 1'b0;
         else
         begin
             if(ucount == 6'd39) // Reset. 
-                ucount = 0;
+                ucount = 1'b0;
             else
                 ucount++;
                 
-            if(ucount % 20 == 0) // Half a us has passed; flip clock. 
+            if(ucount % 20 == 1'b0) // Half a us has passed; flip clock. 
                 uclk = !uclk; 
         end
     end
@@ -123,9 +131,9 @@ module distance(input logic clk,                // 40 MHz clock.
         if(reset)
         begin
             hold = accumulateresult;
-            counter = 0;
-            accumulateresult = 0;
-            trig = 1; // Raise trig, beginning of cycle. 
+            counter = 1'b0;
+            accumulateresult = 1'b0;
+            trig = 1'b1; // Raise trig, beginning of cycle. 
         end
         else
         begin
@@ -133,14 +141,14 @@ module distance(input logic clk,                // 40 MHz clock.
             if(counter == 16'd59999)
             begin
                 hold = accumulateresult;
-                counter = 0;
-                accumulateresult = 0;
-                trig = 1; // Raise trig, beginning of cycle. 
+                counter = 1'b0;
+                accumulateresult = 1'b0;
+                trig = 1'b1; // Raise trig, beginning of cycle. 
             end
             else
             begin
-                if(counter == 16'd19) trig = 0; // Stop triggering; the stated minimum of
-                                                // 10 us didn't work, but 20 did.
+                if(counter == 16'd19) trig = 1'b0; // Stop triggering; the stated minimum of
+                                                   // 10 us didn't work, but 20 did.
                 counter++; // Regardless of trigger state, continue counting. 
                 if(echo) // Count how long echo is raised. 
                     accumulateresult++;
@@ -154,16 +162,16 @@ module distance(input logic clk,                // 40 MHz clock.
 
     always_comb // Evenly split 3552us into intervals of 444. 
     begin
-        if(save > 12'd3552)           intensity = 3'd0; // Farthest; least intense. 
-        else if(save > 12'd3108)      intensity = 3'd1; 
-        else if(save > 12'd2664)      intensity = 3'd2;
-        else if(save > 12'd2220)      intensity = 3'd3;
-        else if(save > 12'd1776)      intensity = 3'd4;
-        else if(save > 12'd1332)      intensity = 3'd5;
-        else if(save > 12'd888)       intensity = 3'd6;
-        else if(save > 12'd444)       intensity = 3'd7;
-        else if(save > 0)             intensity = 3'd8; // Closest; most intense.
-        else                                intensity = 3'd0; // If we see a value that we don't know how to handle, read a 0. 
+        if(save > 12'd3552)           intensity = 4'h0; // Farthest; least intense. 
+        else if(save > 12'd3108)      intensity = 4'h1; 
+        else if(save > 12'd2664)      intensity = 4'h2;
+        else if(save > 12'd2220)      intensity = 4'h3;
+        else if(save > 12'd1776)      intensity = 4'h4;
+        else if(save > 12'd1332)      intensity = 4'h5;
+        else if(save > 12'd888)       intensity = 4'h6;
+        else if(save > 12'd444)       intensity = 4'h7;
+        else if(save > 1'b0)          intensity = 4'h8; // Closest; most intense.
+        else                          intensity = 4'h0; // If we see a value that we don't know how to handle, read a 0. 
     end
     
 endmodule
