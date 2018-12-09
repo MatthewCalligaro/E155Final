@@ -26,22 +26,3 @@ module testbench();
     end
     assign dinAdc = counter[5];
 endmodule
-
-module testbench2();    
-    logic [9:0] sampleVoltage = 1'b0;
-    logic [9:0] offset = 10'h1FF;
-    logic [10:0] preprocVoltage;
-    logic clk;
-
-    preprocess dut(sampleVoltage, offset, preprocVoltage);
-
-    // Generate clk
-    always begin     
-        clk=1; #5; clk=0; #5;    
-    end  
-
-    always_ff @(posedge clk) begin
-        sampleVoltage <= sampleVoltage + 1;
-        if (sampleVoltage == 10'h3FF) $stop;
-    end
-endmodule

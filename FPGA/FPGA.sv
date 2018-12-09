@@ -26,15 +26,15 @@ module FPGA(input logic clk, reset,
     logic [9:0] offset;             // voltage bias produced by amplifier (unsigned)
 
     // Other
-    logic [3:0] distance;   // Distance detected by ultrasonic sensor
+    logic [3:0] intensity;  // inverse of distance detected by ultrasonic sensor
 
     // Modules
     adc adc1(sclkAdc, reset, !counter[9], 1'b0, dinAdc, doutAdc, ncsAdc, sampleVoltage);
     pi pi1(sclkPi, reset, !counter[9], sendVoltage, doutPi, ncsPi);
     mem mem1(clk, WE, address, writeVoltage, readVoltage);
     calibrate calibrate1(reset, !counter[9], sampleVoltage, offset);
-    distance distance1(clk, reset, echo, trig, distance);
-    effects effects1(reset, clk, switch, counter, sampleVoltage, offset, readVoltage, distance, 
+    distance distance1(clk, reset, echo, trig, intensity);
+    effects effects1(reset, clk, switch, counter, sampleVoltage, offset, readVoltage, intensity, 
         sendVoltage, writeVoltage, address);
 
     // Increment Counter
@@ -46,5 +46,6 @@ module FPGA(input logic clk, reset,
     assign WE = counter == 10'd832;         // store writeVoltage on last clk of each cycle
     assign sclkAdc = counter[3];            // ADC's sclk = 2.5 MHz (16 clks)
     assign sclkPi = counter[5];             // Pi's sclk  = 625 KHz (64 clks)
-    assign led = sendVoltage[9:2];          // LEDs display sendVoltage magnitude
+    //assign led = sendVoltage[9:2];          // LEDs display sendVoltage magnitude
+    assign led = {4'b0, intensity};
 endmodule
