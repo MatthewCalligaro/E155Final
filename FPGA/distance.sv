@@ -59,7 +59,7 @@ module saveavg(input logic clk, reset,
     begin
         if(reset)
         begin
-            sum = 15'd24864; // Initialize at far distance (no effects). 
+            sum = 15'h6120; // Initialize at far distance (no effects). 
             gettingvalues = 1'b0;
             trigHigh = 1'b0;
         end
@@ -72,7 +72,7 @@ module saveavg(input logic clk, reset,
                 if(gettingvalues <= 3'h6) 
                 begin
                     gettingvalues++;
-                    sum -= 12'd3552;
+                    sum -= 12'hde0;
                     sum += latest;
                 end
                 else
@@ -115,7 +115,7 @@ module distance(input logic clk,                // 40 MHz clock.
             ucount = 1'b0;
         else
         begin
-            if(ucount == 6'd39) // Reset. 
+            if(ucount == 6'h27) // Reset. 
                 ucount = 1'b0;
             else
                 ucount++;
@@ -138,7 +138,7 @@ module distance(input logic clk,                // 40 MHz clock.
         else
         begin
             // Reset on 60 ms (60000 us).
-            if(counter == 16'd59999)
+            if(counter == 16'hea5f)
             begin
                 hold = accumulateresult;
                 counter = 1'b0;
@@ -147,7 +147,7 @@ module distance(input logic clk,                // 40 MHz clock.
             end
             else
             begin
-                if(counter == 16'd19) trig = 1'b0; // Stop triggering; the stated minimum of
+                if(counter == 16'h13) trig = 1'b0; // Stop triggering; the stated minimum of
                                                    // 10 us didn't work, but 20 did.
                 counter++; // Regardless of trigger state, continue counting. 
                 if(echo) // Count how long echo is raised. 
@@ -162,16 +162,16 @@ module distance(input logic clk,                // 40 MHz clock.
 
     always_comb // Evenly split 3552us into intervals of 444. 
     begin
-        if(save > 12'd3552)           intensity = 4'h0; // Farthest; least intense. 
-        else if(save > 12'd3108)      intensity = 4'h1; 
-        else if(save > 12'd2664)      intensity = 4'h2;
-        else if(save > 12'd2220)      intensity = 4'h3;
-        else if(save > 12'd1776)      intensity = 4'h4;
-        else if(save > 12'd1332)      intensity = 4'h5;
-        else if(save > 12'd888)       intensity = 4'h6;
-        else if(save > 12'd444)       intensity = 4'h7;
-        else if(save > 1'b0)          intensity = 4'h8; // Closest; most intense.
-        else                          intensity = 4'h0; // If we see a value that we don't know how to handle, read a 0. 
+        if(save > 12'hde0)           intensity = 4'h0; // Farthest; least intense. 
+        else if(save > 12'hc24)      intensity = 4'h1; 
+        else if(save > 12'ha68)      intensity = 4'h2;
+        else if(save > 12'h8ac)      intensity = 4'h3;
+        else if(save > 12'h6f0)      intensity = 4'h4;
+        else if(save > 12'h534)      intensity = 4'h5;
+        else if(save > 12'h378)      intensity = 4'h6;
+        else if(save > 12'h1bc)      intensity = 4'h7;
+        else if(save > 1'b0)         intensity = 4'h8; // Closest; most intense.
+        else                         intensity = 4'h0; // If we see a value that we don't know how to handle, read a 0. 
     end
     
 endmodule
