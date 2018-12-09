@@ -108,30 +108,24 @@ module distsensor(input logic clk, reset,
                   output logic trig,
                   output logic[11:0] hold); // Persists the last sensor value.
     // Track clock and state.
-    logic [5:0] ucount; // Counts up to 1 us; reset when you hit 40. 
-    logic uclk; // Has a posedge once every us. 
-    logic [15:0] counter; // Counts up once every us; proxy for state. 
+    logic [5:0] clkcounter; 
+    logic slowclk;
+    logic [15:0] counter; // Counts up with slowclk; proxy for state. 
     logic [11:0] accumulateresult;  // Keeps track of how long echo has been raised. 
     
-    // Generate us clock.
+    // Generate slower clock.
     always_ff@(posedge clk, posedge reset)
     begin
         if(reset) // Reset. 
-            ucount = 1'b0;
+            clkcounter = 1'b0;
         else
-        begin
-            if(ucount == 6'h27) // Reset. 
-                ucount = 1'b0;
-            else
-                ucount++;
-                
-            if(ucount % 20 == 1'b0) // Half a us has passed; flip clock. 
-                uclk = !uclk; 
-        end
+            clkcounter++;
     end
+
+    assign slowclk = clkcounter[4]; // 1.25 MHz
         
     // Communicate with sensor. 
-    always_ff@(posedge uclk, posedge reset)
+    always_ff@(posedge slowclk, posedge reset)
     begin
         if(reset)
         begin
@@ -143,7 +137,7 @@ module distsensor(input logic clk, reset,
         else
         begin
             // Reset on 60 ms (60000 us).
-            if(counter == 16'hea5f)
+            if(counter == 16'hbb80) // ea5f
             begin
                 hold = accumulateresult;
                 counter = 1'b0;
@@ -152,8 +146,7 @@ module distsensor(input logic clk, reset,
             end
             else
             begin
-                if(counter == 16'h13) trig = 1'b0; // Stop triggering; the stated minimum of
-                                                   // 10 us didn't work, but 20 did.
+                if(counter == 16'h10) trig = 1'b0; // Stop triggering. 
                 counter++; // Regardless of trigger state, continue counting. 
                 if(echo) // Count how long echo is raised. 
                     accumulateresult++;
