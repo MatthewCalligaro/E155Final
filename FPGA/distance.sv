@@ -41,12 +41,12 @@ module ring(input logic clk, reset, trig,
 endmodule
 
 
-// Calculate average of current and last 6 data points. 
+// Calculate average of current and last 7 data points. 
 // Keeps running sum, adding latest and subtracting oldest to obtain updated sum. 
 module averager(input logic clk, reset,
                 input logic trig, 
                 input logic[11:0] latest, oldest,
-                output logic[15:0] avg);
+                output logic[11:0] avg);
 
     logic trigHigh; // If we expect trig to currently be high or not. 
     logic [15:0] sum; // Saved sum across runs; used to calculate average. 
@@ -56,7 +56,7 @@ module averager(input logic clk, reset,
     begin
         if(reset)
         begin
-            sum = 15'h6120; // Initialize at far distance (no effects). 
+            sum = 15'h3800; // Initialize at far distance (no effects). 
             gettingvalues = 1'b0;
             trigHigh = 1'b0;
         end
@@ -69,7 +69,7 @@ module averager(input logic clk, reset,
                 if(gettingvalues <= 3'h6) 
                 begin
                     gettingvalues++;
-                    sum -= 12'hde0;
+                    sum -= 12'h100;
                     sum += latest;
                 end
                 else
@@ -83,16 +83,16 @@ module averager(input logic clk, reset,
         else trigHigh = trig; // Trig is high; idle until trig is low again. 
     end
     
-    // Calculate average of seven points. 
-    assign avg = sum / 3'h7; 
+    // Calculate average of eight points. 
+    assign avg = (sum + oldest) >> 2'h3; 
 endmodule 
 
 
-// Average current and last 6 data points. 
+// Average current and last 7 data points. 
 module saveavg(input logic clk, reset,
                input logic trig,
                input logic[11:0] latest,
-               output logic[15:0] avg);
+               output logic[11:0] avg);
                     
     logic [11:0] oldest; // Oldest reading saved in memory. 
     
@@ -166,16 +166,16 @@ endmodule
 // Translate saved measurement to an intensity. // TODO is this ridiculous?
 module intensity(input logic[15:0] save,
                  output logic[3:0] intensity);
-    always_comb // Evenly split 3552us into intervals of 444. 
+    always_comb
     begin
-        if(save > 12'hde0)           intensity = 4'h0; // Farthest; least intense. 
-        else if(save > 12'hc24)      intensity = 4'h1; 
-        else if(save > 12'ha68)      intensity = 4'h2;
-        else if(save > 12'h8ac)      intensity = 4'h3;
-        else if(save > 12'h6f0)      intensity = 4'h4;
-        else if(save > 12'h534)      intensity = 4'h5;
-        else if(save > 12'h378)      intensity = 4'h6;
-        else if(save > 12'h1bc)      intensity = 4'h7;
+        if(save > 12'h800)           intensity = 4'h0; // Farthest; least intense. 
+        else if(save > 12'h700)      intensity = 4'h1; 
+        else if(save > 12'h600)      intensity = 4'h2;
+        else if(save > 12'h500)      intensity = 4'h3;
+        else if(save > 12'h400)      intensity = 4'h4;
+        else if(save > 12'h300)      intensity = 4'h5;
+        else if(save > 12'h200)      intensity = 4'h6;
+        else if(save > 12'h100)      intensity = 4'h7;
         else if(save > 1'b0)         intensity = 4'h8; // Closest; most intense.
         else                         intensity = 4'h0; // If we see a value that we don't know how to handle, read a 0. 
     end
