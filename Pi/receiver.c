@@ -177,28 +177,28 @@ char* getIPAddress(char* retIP)
 {
     struct ifaddrs* addrs;
     struct ifaddrs* tmp;
-    char* tempIP;
     getifaddrs(&addrs);
     tmp = addrs;
 
-    while (tmp) 
+    // Iterate interfaces
+    while (tmp)
     {
         if (tmp->ifa_addr && tmp->ifa_addr->sa_family == AF_INET)
         {
             struct sockaddr_in *pAddr = (struct sockaddr_in *)tmp->ifa_addr;
-            printf("%s: %s\n", tmp->ifa_name, inet_ntoa(pAddr->sin_addr));
+	    // If the address is not localhost, this is the IP; return it
             if(strcmp(inet_ntoa(pAddr->sin_addr), "127.0.0.1")) {
 	        strcpy(retIP, inet_ntoa(pAddr->sin_addr));
-	        printf("a different boi\n");
 		freeifaddrs(addrs);
                 return retIP;
             }
         }
         tmp = tmp->ifa_next;
     }
-    printf("same boi\n");
+    // Did not find an IP; return localhost
     freeifaddrs(addrs);
-    return NULL;
+    strcpy(retIP, "127.0.0.1");
+    return retIP;
 }
 
 /**
@@ -207,11 +207,6 @@ char* getIPAddress(char* retIP)
 int main()
 {
     init();
-
-    char IPAddress[200];
-
-    getIPAddress(IPAddress);
-    printf("there %s\n", IPAddress);
 
     // GPIO variables
     int recording = digitalRead(PIN_RECORD);
@@ -231,7 +226,8 @@ int main()
     // Recording variables
     size_t recordIndex = loadRecording(buffer);
     size_t playIndex = 0;
-    //char* IPAddress = getIPAddress();
+    char IPAddress[200];
+    getIPAddress(IPAddress);
 
     // SPI variables
     int curNCS = digitalRead(NCS);
