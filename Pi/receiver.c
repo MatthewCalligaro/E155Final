@@ -174,37 +174,27 @@ void flashLED(int numFlashes)
  */
 char* getIPAddress()
 {
-	/*
-    struct ifaddrs* addr;
+    struct ifaddrs* addrs;
+    struct ifaddrs* tmp;
+    char* retIP;
+    getifaddrs(&addrs);
+    tmp = addrs;
 
-    // If we cannot extract the IP address, return a default value
-    if (getifaddrs(&addr) == -1)
+    while (tmp) 
     {
-        printf("Warning: failed to calculate IP address\n");
-        return "<IP address>";
+        if (tmp->ifa_addr && tmp->ifa_addr->sa_family == AF_INET)
+        {
+            struct sockaddr_in *pAddr = (struct sockaddr_in *)tmp->ifa_addr;
+            printf("%s: %s\n", tmp->ifa_name, inet_ntoa(pAddr->sin_addr));
+            strcpy(retIP, inet_ntoa(pAddr->sin_addr));
+            if(!strcmp(retIP, "127.0.0.1")) {
+                return retIP;
+            }
+        }
+        tmp = tmp->ifa_next;
     }
-
-    printf("%ux\n", addr->ifa_addr->sin_addr);
-
-    // TODO: Finish writing this
-    */
-	struct ifaddrs* addrs;
-	struct ifaddrs* tmp;
-getifaddrs(&addrs);
-tmp = addrs;
-
-while (tmp) 
-{
-	    if (tmp->ifa_addr && tmp->ifa_addr->sa_family == AF_INET)
-		        {
-				        struct sockaddr_in *pAddr = (struct sockaddr_in *)tmp->ifa_addr;
-					        printf("%s: %s\n", tmp->ifa_name, inet_ntoa(pAddr->sin_addr));
-						    }
-printf("ready for next?\n");
-	        tmp = tmp->ifa_next;
-}
-printf("hit end of ip\n");
-freeifaddrs(addrs);
+    freeifaddrs(addrs);
+    return NULL;
 }
 
 /**
