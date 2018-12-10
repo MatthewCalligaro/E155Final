@@ -7,6 +7,8 @@
 #include <stdlib.h>
 #include <sys/types.h>
 #include <ifaddrs.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
 #include "EasyPIO.h"
 
 ////////////////////////////////
@@ -172,18 +174,37 @@ void flashLED(int numFlashes)
  */
 char* getIPAddress()
 {
+	/*
     struct ifaddrs* addr;
 
     // If we cannot extract the IP address, return a default value
-    if (getifaddrs(&ifaddr) == -1)
+    if (getifaddrs(&addr) == -1)
     {
         printf("Warning: failed to calculate IP address\n");
         return "<IP address>";
     }
 
-    printf("%ux\n", addr.ifa_addr.in_addr.saddr);
+    printf("%ux\n", addr->ifa_addr->sin_addr);
 
     // TODO: Finish writing this
+    */
+	struct ifaddrs* addrs;
+	struct ifaddrs* tmp;
+getifaddrs(&addrs);
+tmp = addrs;
+
+while (tmp) 
+{
+	    if (tmp->ifa_addr && tmp->ifa_addr->sa_family == AF_INET)
+		        {
+				        struct sockaddr_in *pAddr = (struct sockaddr_in *)tmp->ifa_addr;
+					        printf("%s: %s\n", tmp->ifa_name, inet_ntoa(pAddr->sin_addr));
+						    }
+printf("ready for next?\n");
+	        tmp = tmp->ifa_next;
+}
+printf("hit end of ip\n");
+freeifaddrs(addrs);
 }
 
 /**
@@ -192,6 +213,8 @@ char* getIPAddress()
 int main()
 {
     init();
+
+    getIPAddress();
 
     // GPIO variables
     int recording = digitalRead(PIN_RECORD);
