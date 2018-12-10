@@ -182,6 +182,8 @@ char* getIPAddress()
     }
 
     printf("%ux\n", addr.ifa_addr.in_addr.saddr);
+
+    // TODO: Finish writing this
 }
 
 /**
@@ -190,7 +192,6 @@ char* getIPAddress()
 int main()
 {
     init();
-
 
     // GPIO variables
     int recording = digitalRead(PIN_RECORD);
@@ -210,7 +211,7 @@ int main()
     // Recording variables
     size_t recordIndex = loadRecording(buffer);
     size_t playIndex = 0;
-    char
+    char* IPAddress = getIPAddress();
 
     // SPI variables
     int curNCS = digitalRead(NCS);
@@ -274,7 +275,7 @@ int main()
         {
             printf("saving...\n");
             saveRecording(buffer, recordIndex);
-            printf("your recording is available at http://134.173.197.210/recording.wav\n");
+            printf("your recording is available at http://%s/recording.wav\n", IPAddress);
             flashLED(3);
             running = 0;
         }

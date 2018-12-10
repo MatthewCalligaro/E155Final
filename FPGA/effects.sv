@@ -36,7 +36,7 @@ module effects(input logic clk,                     // 40 MHz clock
         if (reset) begin
             writeAdr <= 0;
             repCounter <= 0;
-            increaseOdr <= 0;
+            increaseAdr <= 0;
         end else begin
             // Apply effects that require loading data from ring buffer and add into sumVoltage
             case (counter)

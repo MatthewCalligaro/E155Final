@@ -20,11 +20,12 @@ module averager(input logic clk,                // 40 MHz clock
         if(reset) begin
             sum <= 1'b0;
             counter <= 1'b0;
+            lastTrig <= 1'b0;
         end else begin
             lastTrig <= trig;
-            
+
             // Update sum and counter on falling edge of trigger 
-            else if (!trig & lastTrig) begin  
+            if (!trig & lastTrig) begin  
                 // Do not subtract oldest on first 8 cycles
                 sum <= sum + newest - (counter > 32'h8 ? oldest : 1'b0);
                 counter <= counter + 1;
