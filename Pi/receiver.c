@@ -171,9 +171,9 @@ void flashLED(int numFlashes)
 /**
  * \brief Gets the IP address of the microcontroller
  * 
- * \returns IP address in human-readable format
+ * \param buffer to hold IP address in human-readable format
  */
-char* getIPAddress(char* retIP)
+void getIPAddress(char* retIP)
 {
     struct ifaddrs* addrs;
     struct ifaddrs* tmp;
@@ -186,19 +186,19 @@ char* getIPAddress(char* retIP)
         if (tmp->ifa_addr && tmp->ifa_addr->sa_family == AF_INET)
         {
             struct sockaddr_in *pAddr = (struct sockaddr_in *)tmp->ifa_addr;
-        // If the address is not localhost, this is the IP; return it
+            // If the address is not localhost, this is the IP; return it
             if(strcmp(inet_ntoa(pAddr->sin_addr), "127.0.0.1")) {
-            strcpy(retIP, inet_ntoa(pAddr->sin_addr));
-        freeifaddrs(addrs);
-                return retIP;
+                strcpy(retIP, inet_ntoa(pAddr->sin_addr));
+                freeifaddrs(addrs);
+                return;
             }
         }
         tmp = tmp->ifa_next;
     }
-    // Did not find an IP; return localhost
+    // Did not find an IP
     freeifaddrs(addrs);
-    strcpy(retIP, "127.0.0.1");
-    return retIP;
+    strcpy(retIP, "<yourIPAddress>");
+    return;
 }
 
 /**
