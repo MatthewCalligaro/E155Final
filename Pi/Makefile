@@ -5,3 +5,6 @@ receiver: receiver.c EasyPIO.h
 
 run: 
 	sudo nice -n -20 ./receiver
+
+clean:
+	rm receiver
