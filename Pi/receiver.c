@@ -94,7 +94,7 @@ void init()
  * \brief Save recorded audio to a .wav file on the website
  *
  * \param buffer        recorded audio samples
- * \param bufferSize    numebr of audio samples in buffer
+ * \param bufferSize    number of audio samples in buffer
  */
 void saveRecording(short* buffer, size_t bufferSize)
 {
@@ -186,10 +186,10 @@ char* getIPAddress(char* retIP)
         if (tmp->ifa_addr && tmp->ifa_addr->sa_family == AF_INET)
         {
             struct sockaddr_in *pAddr = (struct sockaddr_in *)tmp->ifa_addr;
-	    // If the address is not localhost, this is the IP; return it
+        // If the address is not localhost, this is the IP; return it
             if(strcmp(inet_ntoa(pAddr->sin_addr), "127.0.0.1")) {
-	        strcpy(retIP, inet_ntoa(pAddr->sin_addr));
-		freeifaddrs(addrs);
+            strcpy(retIP, inet_ntoa(pAddr->sin_addr));
+        freeifaddrs(addrs);
                 return retIP;
             }
         }
