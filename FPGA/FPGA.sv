@@ -30,7 +30,7 @@ module FPGA(input logic clk,                        // 40 MHz clock
     adc adc1(sclkAdc, reset, !counter[9], 1'b0, dinAdc, doutAdc, ncsAdc, sampleVoltage);
     pi pi1(sclkPi, reset, !counter[9], sendVoltage, doutPi, ncsPi);
     mem mem1(clk, WE, address, writeVoltage, readVoltage);
-    calibrate calibrate1(reset, !counter[9], sampleVoltage, offset);
+    calibrate calibrate1(reset, !counter[9], switch, sampleVoltage, offset);
     distance distance1(clk, reset, echo, trig, intensity);
     effects effects1(clk, reset, switch, counter, sampleVoltage, offset, readVoltage, intensity, 
         sendVoltage, writeVoltage, address);

@@ -15,7 +15,7 @@ module distance(input logic clk,                // 40 MHz clock
     logic WE;
 
     // Modules
-    averager averager1(trig, reset, newest, oldest, average);
+    averager averager1(clk, reset, trig, newest, oldest, average);
     memSmall memSmall2(clk, !trig, address, newest, oldest);
     distsensor distsensor1(clk, reset, echo, trig, newest, address, WE);
     intensity getintensity(average, intensity);

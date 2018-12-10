@@ -77,8 +77,8 @@ module effects(input logic clk,                     // 40 MHz clock
         sampleExt = sampleVoltage;
         offsetExt = offset;
 
-        // Remove offset from sample voltage and add a small additional offset to reduce noise
-        offsetVoltage = sampleExt - offsetExt + 4'hF;
+        // Remove offset from sample voltage
+        offsetVoltage = sampleExt - offsetExt;
 
         // Absolute value of sumVoltage
         if (sumVoltage[15])     sumVoltageAbs = -sumVoltage;
