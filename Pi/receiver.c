@@ -6,6 +6,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/types.h>
+#include <string.h>
 #include <ifaddrs.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
@@ -172,11 +173,11 @@ void flashLED(int numFlashes)
  * 
  * \returns IP address in human-readable format
  */
-char* getIPAddress()
+char* getIPAddress(char* retIP)
 {
     struct ifaddrs* addrs;
     struct ifaddrs* tmp;
-    char* retIP;
+    char* tempIP;
     getifaddrs(&addrs);
     tmp = addrs;
 
@@ -186,13 +187,16 @@ char* getIPAddress()
         {
             struct sockaddr_in *pAddr = (struct sockaddr_in *)tmp->ifa_addr;
             printf("%s: %s\n", tmp->ifa_name, inet_ntoa(pAddr->sin_addr));
-            strcpy(retIP, inet_ntoa(pAddr->sin_addr));
-            if(!strcmp(retIP, "127.0.0.1")) {
+            if(strcmp(inet_ntoa(pAddr->sin_addr), "127.0.0.1")) {
+	        strcpy(retIP, inet_ntoa(pAddr->sin_addr));
+	        printf("a different boi\n");
+		freeifaddrs(addrs);
                 return retIP;
             }
         }
         tmp = tmp->ifa_next;
     }
+    printf("same boi\n");
     freeifaddrs(addrs);
     return NULL;
 }
@@ -204,7 +208,10 @@ int main()
 {
     init();
 
-    getIPAddress();
+    char IPAddress[200];
+
+    getIPAddress(IPAddress);
+    printf("there %s\n", IPAddress);
 
     // GPIO variables
     int recording = digitalRead(PIN_RECORD);
@@ -224,7 +231,7 @@ int main()
     // Recording variables
     size_t recordIndex = loadRecording(buffer);
     size_t playIndex = 0;
-    char* IPAddress = getIPAddress();
+    //char* IPAddress = getIPAddress();
 
     // SPI variables
     int curNCS = digitalRead(NCS);
