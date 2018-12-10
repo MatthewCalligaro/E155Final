@@ -7,7 +7,7 @@ module intensity(input logic [11:0] average,    // average distance detected by 
                  output logic [3:0] intensity); // 9-level intensity corresponding to distance
 
     always_comb begin
-        if      (average > 12'h900)     intensity = 4'h0;   // Farthest = least intense. 
+        if      (average > 12'h900)     intensity = 4'h0;   // farthest = least intense. 
         else if (average > 12'h800)     intensity = 4'h1; 
         else if (average > 12'h700)     intensity = 4'h2;
         else if (average > 12'h600)     intensity = 4'h3;
@@ -15,6 +15,6 @@ module intensity(input logic [11:0] average,    // average distance detected by 
         else if (average > 12'h400)     intensity = 4'h5;
         else if (average > 12'h300)     intensity = 4'h6;
         else if (average > 12'h200)     intensity = 4'h7;
-        else                            intensity = 4'h8;   // Closest = most intense.
+        else                            intensity = 4'h8;   // closest = most intense.
     end
 endmodule

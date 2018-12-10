@@ -1,7 +1,7 @@
 // Name: Matthew Calligaro
 // Email: mcalligaro@g.hmc.edu
 // Date: 11/7/2018
-// Summary: RAM module with read and write capabilities
+// Summary: RAM module for distance ring buffer
 // Code adapted from Digital Design and Computer Architecture, 455
 
 module memSmall(input logic clk,            // 40 MHz clock
@@ -10,10 +10,11 @@ module memSmall(input logic clk,            // 40 MHz clock
                 input logic [11:0] WD,      // data to write to A when WE is asserted
                 output logic [11:0] RD);    // data read from A
 	
-	logic [11:0] RAM[7:0];    
-	assign RD = RAM[A]; 
+	logic [11:0] RAM[7:0];
+	assign RD = RAM[A];
 	
+    // Write data if WE is asserted
 	always_ff@(posedge clk)
 		if (WE) RAM[A] <= WD;
-endmodule	
+endmodule
 	

@@ -9,15 +9,14 @@ module distance(input logic clk,                // 40 MHz clock
                 output logic trig,              // trigger pin of distance sensor
                 output logic [3:0] intensity);  // intensity level with higher meaning closer
     
-    // Declare wires between modules
+    // Wires between modules
     logic [11:0] newest, oldest, average; 
     logic [2:0] address;
     logic WE;
 
-    // Declare modules
+    // Modules
     averager averager1(trig, reset, newest, oldest, average);
     memSmall memSmall2(clk, !trig, address, newest, oldest);
     distsensor distsensor1(clk, reset, echo, trig, newest, address, WE);
     intensity getintensity(average, intensity);
-    
 endmodule
