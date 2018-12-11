@@ -226,7 +226,7 @@ int main()
     // Recording variables
     size_t recordIndex = loadRecording(buffer);
     size_t playIndex = 0;
-    char IPAddress[200];
+    char IPAddress[16];
     getIPAddress(IPAddress);
 
     // SPI variables
