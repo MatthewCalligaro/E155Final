@@ -6,7 +6,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/types.h>
+#include <string.h>
 #include <ifaddrs.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
 #include "EasyPIO.h"
 
 ////////////////////////////////
@@ -91,7 +94,7 @@ void init()
  * \brief Save recorded audio to a .wav file on the website
  *
  * \param buffer        recorded audio samples
- * \param bufferSize    numebr of audio samples in buffer
+ * \param bufferSize    number of audio samples in buffer
  */
 void saveRecording(short* buffer, size_t bufferSize)
 {
@@ -168,22 +171,34 @@ void flashLED(int numFlashes)
 /**
  * \brief Gets the IP address of the microcontroller
  * 
- * \returns IP address in human-readable format
+ * \param buffer to hold IP address in human-readable format
  */
-char* getIPAddress()
+void getIPAddress(char* retIP)
 {
-    struct ifaddrs* addr;
+    struct ifaddrs* addrs;
+    struct ifaddrs* tmp;
+    getifaddrs(&addrs);
+    tmp = addrs;
 
-    // If we cannot extract the IP address, return a default value
-    if (getifaddrs(&ifaddr) == -1)
+    // Iterate interfaces
+    while (tmp)
     {
-        printf("Warning: failed to calculate IP address\n");
-        return "<IP address>";
+        if (tmp->ifa_addr && tmp->ifa_addr->sa_family == AF_INET)
+        {
+            struct sockaddr_in *pAddr = (struct sockaddr_in *)tmp->ifa_addr;
+            // If the address is not localhost, this is the IP; return it
+            if(strcmp(inet_ntoa(pAddr->sin_addr), "127.0.0.1")) {
+                strcpy(retIP, inet_ntoa(pAddr->sin_addr));
+                freeifaddrs(addrs);
+                return;
+            }
+        }
+        tmp = tmp->ifa_next;
     }
-
-    printf("%ux\n", addr.ifa_addr.in_addr.saddr);
-
-    // TODO: Finish writing this
+    // Did not find an IP
+    freeifaddrs(addrs);
+    strcpy(retIP, "<yourIPAddress>");
+    return;
 }
 
 /**
@@ -211,7 +226,8 @@ int main()
     // Recording variables
     size_t recordIndex = loadRecording(buffer);
     size_t playIndex = 0;
-    char* IPAddress = getIPAddress();
+    char IPAddress[16];
+    getIPAddress(IPAddress);
 
     // SPI variables
     int curNCS = digitalRead(NCS);
