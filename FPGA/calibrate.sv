@@ -29,6 +29,6 @@ module calibrate(input logic reset,                 // hardware reset
         end
     end
 
-    // Offset is the average of the 4096 calibration samples + secondOffset
+    // Offset is the average of the 4096 calibration samples minus secondOffset
     assign offset = offsetSum[21:12] - (secondOffset << 1'b0);
 endmodule

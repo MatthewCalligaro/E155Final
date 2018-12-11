@@ -18,7 +18,7 @@
 
 // Program constants
 #define VOLUME 16           // volume multiplier
-#define BUF_SIZE (1 << 24)  // size of recording buffer
+#define BUF_SIZE (1 << 24)  // size of recording buffer (allows for 5 mins 49 secs of recording)
 #define INPUT_BITS 11       // bit depth of FPGA signal
 #define FLASH_TIME 200      // LED flash time in miliseconds
 #define DEBOUNCE_TIME 5     // time in miliseconds to wait for inputs to debounce
@@ -34,11 +34,11 @@
 #define SCLK 5              // SPI clock
 
 // WAV constants
-#define CHANNELS 1
-#define SAMPLE_RATE 48000
-#define BIT_DEPTH 16
-#define BIT_RATE (SAMPLE_RATE * BIT_DEPTH * CHANNELS / 8)
-#define BYTES_PER_SAMPLE (BIT_DEPTH * CHANNELS / 8)
+#define CHANNELS 1          // number of channels (mono or stereo)
+#define SAMPLE_RATE 48000   // samples per second
+#define BIT_DEPTH 16        // bits per sample
+#define BIT_RATE (SAMPLE_RATE * BIT_DEPTH * CHANNELS / 8)   // bits per second
+#define BYTES_PER_SAMPLE (BIT_DEPTH * CHANNELS / 8)         // bytes per sample
 
 // Global Variables 
 short buffer[BUF_SIZE];     // stores samples of the recording
@@ -48,6 +48,9 @@ short buffer[BUF_SIZE];     // stores samples of the recording
 //  Structs
 ////////////////////////////////
 
+/**
+ * \brief Struct storing the 44-bit file header of a .wav file
+ */
 typedef struct
 {
     char fileFormat[4];
@@ -65,8 +68,6 @@ typedef struct
     int dataLength;
 } WavHeader;
 
-
-
 ////////////////////////////////
 //  Functions
 ////////////////////////////////
@@ -76,15 +77,18 @@ typedef struct
  */
 void init()
 {
+    // Initialize peripherals
     pioInit();
     pwmInit();
 
+    // Initialize user interface pins
     pinMode(PIN_RECORD, INPUT);
     pinMode(PIN_START, INPUT);
     pinMode(PIN_RESET, INPUT);
     pinMode(PIN_SAVE, INPUT);
     pinMode(PIN_LED, OUTPUT);
 
+    // Initialize SPI pins
     pinMode(NCS, INPUT);
     pinMode(MOSI, INPUT);
     pinMode(SCLK, INPUT);
@@ -98,6 +102,7 @@ void init()
  */
 void saveRecording(short* buffer, size_t bufferSize)
 {
+    // Fill header with correct data
     WavHeader header;
     header.fileFormat[0] = 'R';
     header.fileFormat[1] = 'I';
@@ -125,6 +130,7 @@ void saveRecording(short* buffer, size_t bufferSize)
     header.dataHeader[3] = 'a';
     header.dataLength = bufferSize * sizeof(short);
 
+    // Write header and buffer to recording.wav on the website
     FILE* file = fopen("/var/www/html/recording.wav", "w");
     fwrite(&header, sizeof(WavHeader), 1, file);
     fwrite(buffer, sizeof(short), bufferSize, file);
@@ -142,9 +148,14 @@ size_t loadRecording(short* buffer)
 {
     size_t samples = 0;
     FILE* file = fopen("/var/www/html/recording.wav", "r");
+
+    // If the file on the website exists, read it into buffer
     if (file != NULL)
-    {
-        fread(buffer, 1, 44, file); // Read in the header but overwrite it
+    {   
+        // Read in the header (not useful for us)
+        fread(buffer, 1, 44, file); 
+
+        // Read in the data so that it overwrites the header
         samples = fread(buffer, sizeof(short), BUF_SIZE, file);
         fclose(file);
     }
@@ -177,17 +188,21 @@ void getIPAddress(char* retIP)
 {
     struct ifaddrs* addrs;
     struct ifaddrs* tmp;
+
+    // Get all network interfaces as a linked list
     getifaddrs(&addrs);
     tmp = addrs;
 
-    // Iterate interfaces
+    // Iterate through network interfaces searching for the IP address
     while (tmp)
     {
         if (tmp->ifa_addr && tmp->ifa_addr->sa_family == AF_INET)
         {
             struct sockaddr_in *pAddr = (struct sockaddr_in *)tmp->ifa_addr;
+
             // If the address is not localhost, this is the IP; return it
-            if(strcmp(inet_ntoa(pAddr->sin_addr), "127.0.0.1")) {
+            if(strcmp(inet_ntoa(pAddr->sin_addr), "127.0.0.1")) 
+            {
                 strcpy(retIP, inet_ntoa(pAddr->sin_addr));
                 freeifaddrs(addrs);
                 return;
@@ -195,10 +210,10 @@ void getIPAddress(char* retIP)
         }
         tmp = tmp->ifa_next;
     }
-    // Did not find an IP
+
+    // If IP address was not found, return a placeholder so user knows to look it up manually
     freeifaddrs(addrs);
     strcpy(retIP, "<yourIPAddress>");
-    return;
 }
 
 /**
@@ -206,6 +221,7 @@ void getIPAddress(char* retIP)
  */
 int main()
 {
+    // Initialize peripherals
     init();
 
     // GPIO variables
@@ -259,7 +275,7 @@ int main()
             inputSamples = 0;
         }
 
-        // if switch between play and recording mode, stop playing/recording 
+        // if user switches between play and recording mode, stop playing/recording 
         if (recording != lastRecording)
         {
             running = 0;
@@ -269,7 +285,7 @@ int main()
         if (start && !lastStart)
         {
             running = !running;
-        }   
+        }
 
         // Handle "reset" button
         if (reset && !lastReset)
@@ -296,13 +312,13 @@ int main()
             running = 0;
         }
 
-        // Update last_ variables so we only trigger on the raising edge of inputs
+        // Update lastX variables so we only trigger on the raising edge of inputs
         lastRecording = recording;
         lastStart = start;
         lastReset = reset; 
         lastSave = save;
 
-        // Turn LED on if playing or recording
+        // Turn on LED if playing or recording
         digitalWrite(PIN_LED, running);
 
 
@@ -317,7 +333,7 @@ int main()
             dut = ((float)input + buffer[playIndex]) / (1 << 15);
             playIndex++;
 
-            // If we run out of recording, stop playing
+            // If we reach the end of the recording, stop playing
             if (playIndex >= recordIndex)
             {
                 running = 0;
@@ -329,7 +345,7 @@ int main()
             dut = ((float)input) / (1 << 15);
         }
 
-        // Scale dut so that it is positive
+        // Bias dut so that it is alaways positive
         dut = (dut / 2) + 0.5;    
 
 
@@ -349,8 +365,7 @@ int main()
         {
             curNCS = digitalRead(NCS);
 
-            // NCS is low and we are reading
-            if (reading)
+            if (reading)    // NCS is low and we are reading
             {
                 curSCLK = digitalRead(SCLK);
 
@@ -360,7 +375,7 @@ int main()
                     input = (input << 1) + digitalRead(MOSI); 
                     bitsIn++;
                     
-                    // Stop reading once we NCS is raised or we read all bits
+                    // Stop reading once NCS is raised or we read all bits
                     if (curNCS || bitsIn >= INPUT_BITS)
                     {
                         // Convert 11-bit sign-magnitude to 16-bit 2's complement
@@ -376,12 +391,13 @@ int main()
                             input = lastInput;
                         }
 
-                        // If set to record, add to recording buffer 
+                        // If recording, add the sample to the recording buffer 
                         if (recording && running)
                         {
                             buffer[recordIndex] = input;
                             recordIndex++;
 
+                            // If we fill up the recording buffer, stop recording
                             if (recordIndex >= BUF_SIZE)
                             {
                                 running = 0;
@@ -390,12 +406,10 @@ int main()
                         }
                         break;
                     }
-                } 
+                }
                 lastSCLK = curSCLK;
             }
-
-            // We are waiting for NCS to go low
-            else if (lastNCS && !curNCS)
+            else if (lastNCS && !curNCS)    // We are waiting for NCS to go low
             {
                 // Set output volume with PWM
                 setPWM(SAMPLE_RATE / 2, dut);

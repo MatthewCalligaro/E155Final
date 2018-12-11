@@ -17,4 +17,3 @@ module memSmall(input logic clk,            // 40 MHz clock
 	always_ff@(posedge clk)
 		if (WE) RAM[A] <= WD;
 endmodule
-	
