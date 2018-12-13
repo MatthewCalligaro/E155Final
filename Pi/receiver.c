@@ -182,7 +182,7 @@ void flashLED(int numFlashes)
 /**
  * \brief Gets the IP address of the microcontroller
  * 
- * \param buffer to hold IP address in human-readable format
+ * \param buffer  array to hold IP address in human-readable format
  */
 void getIPAddress(char* retIP)
 {
