@@ -15,21 +15,21 @@ The user interface consists of a series of pushbuttons, DIP switches, and an LED
 The FPGA receives user input from 5 switches and 1 pushbutton.  Any number of effects can be applied at one time.  
 
 Input | Effect
---- | ---
+:---: | :---:
 Switch 0 | Applies overdrive effect
 Switch 1 | Applies delay effect
 Switch 2 | Applies chorus effect
 Switch 3 | Applies distortion effect
 Switch 4 | Turns on distance sensor 
-Reset button | recalibrates device and sets noise gate
+Reset button | Recalibrates device and sets noise gate
 
 To calibrate the device, turn on all electronics and plug in the guitar.  Without playing any noise, press the **Reset button** to calibrate the default input voltage.  To configure the noise gate, orient the 5 switches with the desired binary value (with switch 4 as the most significant bit) and press the **Reset button**.  A higher value should result in less noise.
 
 ### Microcontroller (Recording and Looping)
-The Microcontroller receives user input from 2 switches and 1 pushbutton and displays state through an LED.  The two switches are used to set the device's mode.
+The Microcontroller receives user input from 2 switches and 3 pushbuttons and displays state through an LED.  The two switches are used to set the device's mode.
 
 Loop Switch | Record Switch | Mode
---- | --- | ---
+:---: | :---: | :---:
 Off | Off | Linear playback
 Off | On | Linear record
 On | Off | Loop
@@ -38,11 +38,11 @@ On | On | Loop settings
 In each mode, the pushbuttons have the following effects.
 
 Mode | Play button | Reset button | Save button
---- | --- | --- | ---
-Linear playback | play/pause the recording | restart at the beginning of the recording | save the recording to the internet
-Linear record | start/stop recording | delete the current recording | save the recording to the internet
-Loop | play/pause the current loop | begin recording a new loop | save the loop to the internet
-Loop settings | tap to set tempo | increase number of measures | save the loop to the internet 
+:---: | :---: | :---: | :---:
+Linear playback | Play/pause the recording | Restart at the beginning of the recording | Save the recording to the internet
+Linear record | Start/stop recording | Delete the current recording | Save the recording to the internet
+Loop | Play/pause the current loop | Begin recording a new loop | Save the loop to the internet
+Loop settings | Tap to set tempo | Increase number of measures | Save the loop to the internet 
 
 In each mode, the LED indicates the following information.  In all modes, 3 flashes indicates that the current recording has been successfully saved to the internet. 
 
@@ -84,7 +84,7 @@ In each mode, the LED indicates the following information.  In all modes, 3 flas
 
 ### Parts list
 Part | Quantity | Purpose | Manufacturer
---- | --- | --- | ---
+:---: | :---: | :---: | :---:
 Raspberry Pi 3 Model B+ | 1 | Microcontroller | Raspberry Pi Foundation
 Cyclone IV EP4CE6E22C8N | 1 | FPGA | Altera
 LM386N-4 | 1 | Audio Amplifier | National Semiconductor
